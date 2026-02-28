@@ -40,7 +40,7 @@ export default function StudentHome() {
 
             {/* module 1*/}
             <div
-              onClick={() => router.push("/student/module/1")}
+              onClick={() => router.push("/student/module-library")}
               className="relative h-64 rounded-xl overflow-hidden cursor-pointer group"
               style={{
                 backgroundImage: "url('/intro.jpeg')",
@@ -61,7 +61,7 @@ export default function StudentHome() {
               {/* hover stuff */}
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
                 <p className="text-white text-2xl font-bold z-10">
-                  64% Complete
+                  16% Complete
                 </p>
               </div>
             </div>

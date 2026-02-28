@@ -6,9 +6,10 @@ export default function ExpertHome() {
   const router = useRouter();
 
   const students = [
-    { id: "1", name: "Caleb", progress: 64 },
-    { id: "2", name: "JJ", progress: 20 },
-    { id: "3", name: "Grace", progress: 85 },
+    { id: "1", name: "JJ", progress: 64 },
+    { id: "2", name: "Chris", progress: 16 },
+    { id: "3", name: "Caleb", progress: 85 },
+     { id: "4", name: "Grace", progress: 72 },
   ];
 
   return (
@@ -38,7 +39,7 @@ export default function ExpertHome() {
 
             {/* module 1 */}
             <div
-              onClick={() => router.push("/expert/module/1")}
+              onClick={() => router.push("/expert/module-library")}
               className="relative h-64 rounded-xl overflow-hidden cursor-pointer group"
               style={{
                 backgroundImage: "url('/intro.jpeg')",
@@ -135,13 +136,13 @@ export default function ExpertHome() {
 
           <ul className="space-y-4">
             <li className="p-4 bg-red-300 rounded text-black">
-              Caleb requested help in Module 1
+              Chris requested help in Module 1
             </li>
-            <li className="p-4 bg-red-300 rounded text-black">
-              New submission from JJ
+            <li className="p-4 bg-blue-300 rounded text-black">
+              Grace completed activity "Sketching Basics"
             </li>
-            <li className="p-4 bg-red-300 rounded text-black">
-              Grace completed Module 1
+            <li className="p-4 bg-blue-300 rounded text-black">
+              JJ completed activity "Constraints & Dimensions"
             </li>
           </ul>
         </div>
