@@ -24,18 +24,18 @@ export default function CadSession() {
   return (
     <div className="flex flex-col min-h-screen bg-gray-200">
 
-      {/* TOP BAR */}
+      {/* top */}
       <div className="h-14 bg-white shadow flex items-center justify-between px-6">
 
-        {/* Left */}
+        {/* student name*/}
         <div className="font-semibold text-black">Student Name</div>
 
-        {/* Center */}
+        {/* module name */}
         <div className="font-medium text-gray-600">
           Intro to Model Design
         </div>
 
-        {/* Right */}
+        {/* right buttons */}
         <div className="flex items-center gap-4">
           <button className="px-3 py-1 border rounded hover:bg-gray-100 text-black">
             Talk
@@ -49,6 +49,7 @@ export default function CadSession() {
             Leave Class
           </button>
 
+    {/* dropdown menu */}
         <div className="relative">
          <button onClick={() => setShowSettings(!showSettings)} className="text-lg hover:opacity-70 text-black" >
           Menu
@@ -81,10 +82,10 @@ export default function CadSession() {
         </div>
       </div>
 
-      {/* MAIN CONTENT */}
+      {/* bottom section */}
       <div className="flex flex-1">
 
-        {/* LEFT SIDEBAR */}
+        {/* sidebar */}
         <div className="w-64 bg-gray-100 p-4 border-r flex flex-col">
 
           <h3 className="text-sm font-semibold mb-2 text-black">ELEMENTS</h3>
@@ -95,7 +96,7 @@ export default function CadSession() {
             className="mb-4 p-2 rounded border text-sm text-black"
           />
 
-          {/* Tools Grid */}
+          {/* brickss grid */}
           <div className="grid grid-cols-2 gap-3 mb-6">
             {tools.map((tool) => (
               <div
@@ -158,7 +159,7 @@ export default function CadSession() {
           </div>
         </div>
 
-        {/* CANVAS AREA */}
+        {/* cad canvas */}
         <div className="flex-1 bg-gray-300 flex items-center justify-center ">
 
           <div className="text-gray-600 text-lg">
