@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+
 
 export default function StudentDashboard() {
   const [activeTab, setActiveTab] = useState("modules");
+  const router = useRouter();
 
   const activities = [
   { name: "Getting Acquainted with CAD", status: "completed" },
@@ -62,6 +65,7 @@ export default function StudentDashboard() {
                 return (
                 <div
                     key={index}
+                    onClick={() => { if (!isLocked) router.push(`/student/work-area`); }}
                     className={`rounded-xl shadow p-8 flex flex-col items-center justify-center text-center transition cursor-pointer text-black
                     ${
                         isLocked

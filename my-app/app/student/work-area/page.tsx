@@ -32,7 +32,7 @@ export default function CadSession() {
 
         {/* module name */}
         <div className="font-medium text-gray-600">
-          Intro to Model Design
+          Introduction to CAD
         </div>
 
         {/* right buttons */}

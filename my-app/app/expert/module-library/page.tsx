@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function ExpertDashboard() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("modules");
 
   const activities = [
@@ -72,6 +74,7 @@ export default function ExpertDashboard() {
             <div className="grid grid-cols-3 gap-6">
               {activities.map((activity, index) => (
                 <div
+                onClick={() => { router.push(`/expert/work-area`);}}
                   key={index}
                   className="bg-white rounded-xl shadow p-8 flex items-center justify-center text-center hover:shadow-lg transition cursor-pointer"
                 >
