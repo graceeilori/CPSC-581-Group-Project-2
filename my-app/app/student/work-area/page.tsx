@@ -1,10 +1,80 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
+import * as THREE from "three";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import { Baseplate } from "@/components/Baseplate";
+
+function CameraResetter({ onReady }: { onReady: (reset: () => void) => void }) {
+  const { controls } = useThree();
+  useEffect(() => {
+    if (controls && typeof (controls as OrbitControlsImpl).reset === "function") {
+      onReady(() => (controls as OrbitControlsImpl).reset());
+    }
+  }, [controls]);
+  return null;
+}
 
 export default function CadSession() {
   const [selectedTool, setSelectedTool] = useState("Brick 2x4");
   const [showSettings, setShowSettings] = useState(false);
+  const [baseplateSize, setBaseplateSize] = useState(12);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  const resetCameraRef = useRef<(() => void) | null>(null);
+
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressOrigin = useRef<{ x: number; y: number } | null>(null);
+  const LONG_PRESS_MS = 500;
+  const DRAG_THRESHOLD_PX = 8;
+
+  const handleCameraReady = useCallback((fn: () => void) => {
+    resetCameraRef.current = fn;
+  }, []);
+
+  function closeCtxMenu() {
+    setCtxMenu(null);
+  }
+
+  function handleResetCamera() {
+    resetCameraRef.current?.();
+    closeCtxMenu();
+  }
+
+  function handlePointerDown(e: React.PointerEvent) {
+    if (e.button !== 2) return;
+    pressOrigin.current = { x: e.clientX, y: e.clientY };
+    longPressTimer.current = setTimeout(() => {
+      setCtxMenu({ x: pressOrigin.current!.x, y: pressOrigin.current!.y });
+    }, LONG_PRESS_MS);
+  }
+
+  function handlePointerMove(e: React.PointerEvent) {
+    if (!pressOrigin.current || longPressTimer.current === null) return;
+    const dx = e.clientX - pressOrigin.current.x;
+    const dy = e.clientY - pressOrigin.current.y;
+    if (Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD_PX) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }
+
+  function handlePointerUp(e: React.PointerEvent) {
+    if (e.button !== 2) return;
+    if (longPressTimer.current !== null) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    pressOrigin.current = null;
+  }
+
+  function expandIfNearEdge(gridX: number, gridZ: number) {
+    const half = baseplateSize / 2;
+    if (Math.abs(gridX) >= half - 2 || Math.abs(gridZ) >= half - 2) {
+      setBaseplateSize((prev) => prev + 6);
+    }
+  }
 
   const tools = [
     "Brick 2x4",
@@ -49,36 +119,36 @@ export default function CadSession() {
             Leave Class
           </button>
 
-    {/* dropdown menu */}
-        <div className="relative">
-         <button onClick={() => setShowSettings(!showSettings)} className="text-lg hover:opacity-70 text-black" >
-          Menu
-        </button>
+          {/* dropdown menu */}
+          <div className="relative">
+            <button onClick={() => setShowSettings(!showSettings)} className="text-lg hover:opacity-70 text-black" >
+              Menu
+            </button>
 
-  {showSettings && (
-    <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg border z-50 text-black">
-      <button
-        onClick={() => {
-          alert("Expert has been notified.");
-          setShowSettings(false);
-        }}
-        className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-      >
-        Notify Expert
-      </button>
+            {showSettings && (
+              <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg border z-50 text-black">
+                <button
+                  onClick={() => {
+                    alert("Expert has been notified.");
+                    setShowSettings(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
+                >
+                  Notify Expert
+                </button>
 
-      <button
-        onClick={() => {
-          alert("Opening contact channel...");
-          setShowSettings(false);
-        }}
-        className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-      >
-        Contact Expert
-      </button>
-    </div>
-  )}
-</div>
+                <button
+                  onClick={() => {
+                    alert("Opening contact channel...");
+                    setShowSettings(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
+                >
+                  Contact Expert
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -103,10 +173,9 @@ export default function CadSession() {
                 key={tool}
                 onClick={() => setSelectedTool(tool)}
                 className={`p-4 rounded-lg text-center cursor-pointer transition text-sm text-black
-                  ${
-                    selectedTool === tool
-                      ? "bg-indigo-200 border border-indigo-500"
-                      : "bg-gray-200 hover:bg-gray-300"
+                  ${selectedTool === tool
+                    ? "bg-indigo-200 border border-indigo-500"
+                    : "bg-gray-200 hover:bg-gray-300"
                   }
                 `}
               >
@@ -129,10 +198,9 @@ export default function CadSession() {
                 <div
                   key={layer.name}
                   className={`flex justify-between items-center px-3 py-2 rounded text-sm text-black
-                    ${
-                      isLocked
-                        ? "bg-gray-200 text-gray-600"
-                        : "bg-white"
+                    ${isLocked
+                      ? "bg-gray-200 text-gray-600"
+                      : "bg-white"
                     }
                   `}
                 >
@@ -159,13 +227,50 @@ export default function CadSession() {
           </div>
         </div>
 
-        {/* cad canvas */}
-        <div className="flex-1 bg-gray-300 flex items-center justify-center ">
+        {/* cad canvas — right-drag orbits, scroll to zoom, long-press right shows context menu */}
+        <div
+          className="flex-1 relative"
+          style={{ height: "calc(100vh - 56px)" }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onContextMenu={(e) => e.preventDefault()}
+          onClick={closeCtxMenu}
+        >
+          <Canvas
+            camera={{ position: [8, 8, 8], fov: 50 }}
+            style={{ backgroundColor: "var(--color-canvas)" }}
+            shadows
+          >
+            <ambientLight intensity={0.7} />
+            <directionalLight position={[10, 20, 10]} intensity={1.2} />
+            <Baseplate size={baseplateSize} />
+            <OrbitControls
+              makeDefault
+              mouseButtons={{
+                LEFT: undefined as unknown as THREE.MOUSE,
+                MIDDLE: THREE.MOUSE.DOLLY,
+                RIGHT: THREE.MOUSE.ROTATE,
+              }}
+            />
+            <CameraResetter onReady={handleCameraReady} />
+          </Canvas>
 
-          <div className="text-gray-600 text-lg">
-            CAD Canvas Area
-          </div>
-
+          {/* Right-click context menu */}
+          {ctxMenu && (
+            <div
+              className="fixed z-50 bg-white border border-gray-200 rounded-md shadow-md py-1 min-w-[160px] text-sm text-black"
+              style={{ top: ctxMenu.y, left: ctxMenu.x }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={handleResetCamera}
+                className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2"
+              >
+                Reset camera
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
