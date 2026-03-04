@@ -6,7 +6,7 @@ export default function StudentHome() {
   const router = useRouter();
 
   return (
-    
+
     <div className="min-h-screen flex flex-col bg-gray-100">
 
       {/* top bar */}
@@ -15,7 +15,7 @@ export default function StudentHome() {
 
         {/* menu button*/}
         <div className="relative">
-          <button  className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition text-black"  >
+          <button className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition text-black"  >
             Menu
           </button>
         </div>
@@ -48,7 +48,7 @@ export default function StudentHome() {
                 backgroundPosition: "center",
               }}
             >
-             
+
               <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 transition" />
 
               {/* module 1 text */}

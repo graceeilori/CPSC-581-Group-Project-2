@@ -9,7 +9,7 @@ export default function ExpertHome() {
     { id: "1", name: "JJ", progress: 64 },
     { id: "2", name: "Chris", progress: 16 },
     { id: "3", name: "Caleb", progress: 85 },
-     { id: "4", name: "Grace", progress: 72 },
+    { id: "4", name: "Grace", progress: 72 },
   ];
 
   return (

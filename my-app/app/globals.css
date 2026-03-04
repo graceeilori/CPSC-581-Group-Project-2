@@ -4,12 +4,16 @@
   --background: #ffffff;
   --foreground: #171717;
   --canvas: #F1F2F4;
+  --primary-100: #4C59E6;
+  --neutral-900: #1A1A1A;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-canvas: var(--canvas);
+  --color-primary-100: var(--primary-100);
+  --color-neutral-900: var(--neutral-900);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

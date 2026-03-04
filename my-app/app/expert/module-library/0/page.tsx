@@ -7,7 +7,17 @@ import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Baseplate } from "@/components/Baseplate";
 import { Brick } from "@/components/Brick";
-import { type BrickData } from "@/components/Workspace";
+import wallData from "@/modules/wall.json";
+import { ModuleModel } from "@/components/ModuleModel";
+import Link from "next/link";
+
+export interface BrickData {
+  id: string;
+  position: [number, number, number];
+  dimensions: [number, number, number];
+  color: string;
+  layer: number;
+}
 
 function CameraResetter({ onReady }: { onReady: (reset: () => void) => void }) {
   const { controls } = useThree();
@@ -20,20 +30,20 @@ function CameraResetter({ onReady }: { onReady: (reset: () => void) => void }) {
 }
 
 export default function CadSession() {
-  const [selectedTool, setSelectedTool] = useState("Brick 2x4");
   const [showSettings, setShowSettings] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [bricks, setBricks] = useState<BrickData[]>([]);
   const resetCameraRef = useRef<(() => void) | null>(null);
 
+  const module = { name: "The Wall" };
+
   const BASEPLATE_SIZE = 10;
 
   // brick types for "The Wall"
   const tools: { label: string; dims: [number, number, number]; color: string }[] = [
-    { label: "Brick 1x2", dims: [1, 1, 2], color: "#457B9D" },
-    { label: "Brick 1x2", dims: [1, 1, 2], color: "#A8DADC" },
-    { label: "Brick 2x2", dims: [2, 1, 2], color: "#E63946" },
-    { label: "Plate 2x6", dims: [2, 0.4, 6], color: "#daa569" },
+    { label: "Brick 1x2", dims: [1, 1, 2], color: "#BF5426" },
+    { label: "Brick 1x2", dims: [1, 1, 2], color: "#D2892D" },
+    { label: "Plate 1x6", dims: [1, 0.4, 6], color: "#E8B987" },
   ];
 
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -132,8 +142,11 @@ export default function CadSession() {
     ]);
   }
 
-  // Derive unique layer numbers from placed bricks
   const usedLayers = Array.from(new Set(bricks.map((b) => b.layer))).sort((a, z) => a - z);
+
+  const targetBricks = wallData.targetData as BrickData[];
+
+  const uniqueLayers = Array.from(new Set(targetBricks.map(b => b.layer))).sort((a, b) => a - b);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-gray-200">
@@ -141,61 +154,21 @@ export default function CadSession() {
       {/* top */}
       <div className="h-14 bg-white shadow flex items-center justify-between px-6">
 
-        {/* student name*/}
-        <div className="font-semibold text-black">Student Name</div>
+        <Link
+          href="/expert/module-library"
+          className="flex font-medium text-gray-700 hover:text-gray-900 transition w-100 items-center gap-2"
+        >
+          Back to Library
+        </Link>
 
         {/* module name */}
-        <div className="font-medium text-gray-600">
-          Introduction to CAD
+        <div className="flex font-medium text-gray-600 items-center justify-center w-full">
+          {module.name}
         </div>
 
-        {/* right buttons */}
-        <div className="flex items-center gap-4">
-          <button className="px-3 py-1 border rounded hover:bg-gray-100 text-black">
-            Talk
-          </button>
-
-          <span className="text-green-600 text-sm font-semibold">
-            Phone Linked
-          </span>
-
-          <button className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600">
-            Leave Class
-          </button>
-
-          {/* dropdown menu */}
-          <div className="relative">
-            <button onClick={() => setShowSettings(!showSettings)} className="text-lg hover:opacity-70 text-black" >
-              Menu
-            </button>
-
-            {showSettings && (
-              <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg border z-50 text-black">
-                <button
-                  onClick={() => {
-                    alert("Expert has been notified.");
-                    setShowSettings(false);
-                  }}
-                  className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-                >
-                  Notify Expert
-                </button>
-
-                <button
-                  onClick={() => {
-                    alert("Opening contact channel...");
-                    setShowSettings(false);
-                  }}
-                  className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-                >
-                  Contact Expert
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
+      {/* bottom section */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
         {/* sidebar */}
@@ -208,13 +181,12 @@ export default function CadSession() {
             {tools.map((tool, idx) => (
               <div
                 key={idx}
-                onClick={() => setSelectedIndex(idx)}
-                className={`p-3 rounded-lg text-center cursor-pointer transition text-xs font-medium text-black flex items-center justify-center gap-2
-                              ${selectedIndex === idx
+                className={`p-3 rounded-lg text-center cursor-default transition text-xs font-medium text-black flex items-center justify-center gap-2
+                  ${selectedIndex === idx
                     ? "bg-indigo-200 border border-primary-100"
-                    : "bg-gray-200 hover:bg-gray-300"
+                    : "bg-gray-200"
                   }
-                            `}
+                `}
               >
                 <div
                   className="w-3 h-3 rounded-full border border-black/20"
@@ -229,26 +201,30 @@ export default function CadSession() {
 
           <h3 className="text-sm font-semibold mb-2 text-neutral-900">LAYERS</h3>
 
-          {/* Dynamic layer panel — derived from placed bricks, scrollable */}
+          {/* Dynamic layer panel — populated from static JSON module data */}
           <div
             className="flex-1 min-h-0 space-y-3 overflow-y-auto"
             style={{ scrollbarWidth: "none" }}
           >
-            {usedLayers.length === 0 && (
-              <p className="text-xs text-gray-400">No bricks placed yet.</p>
-            )}
-            {usedLayers.map((layerNum) => {
-              const layerBricks = bricks.filter((b) => b.layer === layerNum);
+            {uniqueLayers.map(layerNum => {
+              const bricksInLayer = targetBricks.filter(b => b.layer === layerNum);
+
               return (
-                <div key={layerNum}>
-                  <p className="text-xs font-semibold text-gray-500 mb-1">Layer {layerNum}</p>
-                  <div className="space-y-1">
-                    {layerBricks.map((brick) => (
+                <div key={`layer-group-${layerNum}`}>
+                  <p className="text-xs font-semibold text-gray-500 mb-1">
+                    Layer {layerNum} ({bricksInLayer.length} blocks)
+                  </p>
+                  <div className="space-y-1 mt-2">
+                    {bricksInLayer.map((brick) => (
                       <div
-                        key={brick.id}
-                        className="flex items-center px-3 py-1.5 rounded text-xs bg-white text-black"
+                        key={`ui-brick-${brick.id}`}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded text-xs bg-white text-black"
                       >
-                        <span>{brick.dimensions[0]}×{brick.dimensions[2]}</span>
+                        <div
+                          className="w-3 h-3 rounded-sm border border-black/10"
+                          style={{ backgroundColor: brick.color }}
+                        />
+                        <span>{brick.dimensions[0]}×{brick.dimensions[2]} Block</span>
                       </div>
                     ))}
                   </div>
@@ -279,8 +255,10 @@ export default function CadSession() {
             <Baseplate
               size={BASEPLATE_SIZE}
               currentTool={currentTool}
-              onPlaceBrick={handlePlaceBrick}
+              onPlaceBrick={() => { }}
             />
+
+            <ModuleModel targetBricks={wallData.targetData as BrickData[]} />
 
             {bricks.map((brick) => (
               <Brick
