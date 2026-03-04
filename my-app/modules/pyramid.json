@@ -1,4 +1,6 @@
-[
+{
+    "name": "The Pyramid",
+    "targetData": [
   {
     "id": "67c015d4-d3a0-477c-8712-ba5ab32d7c01",
     "position": [
@@ -450,3 +452,4 @@
     "layer": 4
   }
 ]
+}

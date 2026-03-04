@@ -24,6 +24,7 @@ export default function CadSession() {
     const [showSettings, setShowSettings] = useState(false);
     const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
     const [bricks, setBricks] = useState<BrickData[]>([]);
+    const [history, setHistory] = useState<BrickData[][]>([]);
     const resetCameraRef = useRef<(() => void) | null>(null);
 
     const module = { name: "Create New Module" };
@@ -93,6 +94,17 @@ export default function CadSession() {
     setBricks((prev) => prev.filter((b) => b.id !== id));
 }
 
+function handleUndo() {
+    setHistory((prev) => {
+      if (prev.length === 0) return prev;
+
+      const previousState = prev[prev.length - 1];
+      setBricks(previousState);
+
+      return prev.slice(0, -1);
+    });
+  }
+
     // returns true if the new brick's 3D footprint overlaps any existing brick.
     // epsilon prevents adjacent touching faces from counting as collisions.
     function checkCollision(
@@ -128,6 +140,9 @@ export default function CadSession() {
         if (checkCollision(newPos, currentTool, bricks)) return;
 
         const layer = Math.floor(y) + 1;
+
+        setHistory((prev) => [...prev, bricks]);
+        
         setBricks((prev) => [
             ...prev,
             {
@@ -155,6 +170,13 @@ export default function CadSession() {
                 >
                     Back to Library
                 </Link>
+
+                 <button
+        onClick={handleUndo}
+        className="px-4 py-2 bg-gray-700 text-white text-sm font-medium rounded-md cursor-pointer"
+      >
+        Undo
+      </button>
 
                 {/* module name */}
                 <div className="font-medium text-gray-600">

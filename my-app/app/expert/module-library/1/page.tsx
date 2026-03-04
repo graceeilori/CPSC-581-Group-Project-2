@@ -7,7 +7,7 @@ import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Baseplate } from "@/components/Baseplate";
 import { Brick } from "@/components/Brick";
-import wallData from "@/modules/wall.json";
+import wallData from "@/modules/pyramid.json";
 import { ModuleModel } from "@/components/ModuleModel";
 import Link from "next/link";
 
@@ -33,17 +33,18 @@ export default function CadSession() {
   const [showSettings, setShowSettings] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [bricks, setBricks] = useState<BrickData[]>([]);
+  const [history, setHistory] = useState<BrickData[][]>([]);
   const resetCameraRef = useRef<(() => void) | null>(null);
 
   const module = { name: "The Pyramid" };
 
   const BASEPLATE_SIZE = 10;
 
-  // brick types for "The Pyramid"
+  // brick types for "The Wall"
   const tools: { label: string; dims: [number, number, number]; color: string }[] = [
-    { label: "Brick 2x2", dims: [2, 1, 2], color: "#44967c" },
-    { label: "Brick 1x2", dims: [1, 1, 2], color: "#4f6eb3" },
-    { label: "Plate 1x6", dims: [1, 0.4, 6], color: "#b65881" },
+    { label: "Brick 1x2", dims: [1, 1, 2], color: "#BF5426" },
+    { label: "Brick 1x2", dims: [1, 1, 2], color: "#D2892D" },
+    { label: "Plate 1x6", dims: [1, 0.4, 6], color: "#E8B987" },
   ];
 
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -95,9 +96,20 @@ export default function CadSession() {
     pressOrigin.current = null;
   }
 
-  function deleteBrick(id: string) {
+   function deleteBrick(id: string) {
     setBricks((prev) => prev.filter((b) => b.id !== id));
 }
+
+  function handleUndo() {
+    setHistory((prev) => {
+      if (prev.length === 0) return prev;
+
+      const previousState = prev[prev.length - 1];
+      setBricks(previousState);
+
+      return prev.slice(0, -1);
+    });
+  }
 
   // returns true if the new brick's 3D footprint overlaps any existing brick.
   // epsilon prevents adjacent touching faces from counting as collisions.
@@ -134,6 +146,9 @@ export default function CadSession() {
     if (checkCollision(newPos, currentTool, bricks)) return;
 
     const layer = Math.floor(y) + 1;
+
+    setHistory((prev) => [...prev, bricks]);
+
     setBricks((prev) => [
       ...prev,
       {
@@ -164,6 +179,13 @@ export default function CadSession() {
         >
           Back to Library
         </Link>
+
+        <button
+        onClick={handleUndo}
+        className="px-4 py-2 bg-gray-700 text-white text-sm font-medium rounded-md cursor-pointer"
+      >
+        Undo
+      </button>
 
         {/* module name */}
         <div className="flex font-medium text-gray-600 items-center justify-center w-full">
