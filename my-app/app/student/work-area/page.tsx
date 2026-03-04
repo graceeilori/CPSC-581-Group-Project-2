@@ -26,7 +26,7 @@ export default function CadSession() {
   const [bricks, setBricks] = useState<BrickData[]>([]);
   const resetCameraRef = useRef<(() => void) | null>(null);
 
-  const BASEPLATE_SIZE = 10; // fixed — no expansion
+  const BASEPLATE_SIZE = 10;
 
   // Maps the sidebar label to [width, height, depth] in world/grid units
   const TOOL_DIMS: Record<string, [number, number, number]> = {
@@ -84,7 +84,7 @@ export default function CadSession() {
     pressOrigin.current = null;
   }
 
-  // AABB collision: returns true if the new brick's 3D footprint overlaps any existing brick.
+  // returns true if the new brick's 3D footprint overlaps any existing brick.
   // epsilon prevents adjacent touching faces from counting as collisions.
   function checkCollision(
     newPos: [number, number, number],
@@ -110,7 +110,6 @@ export default function CadSession() {
   function handlePlaceBrick(x: number, y: number, z: number) {
     const [w, , d] = currentTool;
     const half = BASEPLATE_SIZE / 2;
-    // Reject if any edge of the brick footprint falls outside the plate
     if (
       x - w / 2 < -half || x + w / 2 > half ||
       z - d / 2 < -half || z + d / 2 > half
@@ -119,6 +118,7 @@ export default function CadSession() {
     const newPos: [number, number, number] = [x, y, z];
     if (checkCollision(newPos, currentTool, bricks)) return;
 
+    const layer = Math.floor(y) + 1;
     setBricks((prev) => [
       ...prev,
       {
@@ -126,6 +126,7 @@ export default function CadSession() {
         position: newPos,
         dimensions: currentTool,
         color: "#e63946",
+        layer,
       },
     ]);
   }
@@ -139,14 +140,11 @@ export default function CadSession() {
     "Brick 1x1",
   ];
 
-  const layers = [
-    { name: "Layer 1", status: "complete" },
-    { name: "Layer 2", status: "in-progress" },
-    { name: "Layer 3", status: "locked" },
-  ];
+  // Derive unique layer numbers from placed bricks
+  const usedLayers = Array.from(new Set(bricks.map((b) => b.layer))).sort((a, z) => a - z);
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-200">
+    <div className="flex flex-col h-screen overflow-hidden bg-gray-200">
 
       {/* top */}
       <div className="h-14 bg-white shadow flex items-center justify-between px-6">
@@ -207,10 +205,10 @@ export default function CadSession() {
       </div>
 
       {/* bottom section */}
-      <div className="flex flex-1">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
 
         {/* sidebar */}
-        <div className="w-64 bg-gray-100 p-4 border-r flex flex-col">
+        <div className="w-64 bg-gray-100 p-4 border-r flex flex-col overflow-hidden min-h-0">
 
           <h3 className="text-sm font-semibold mb-2 text-black">ELEMENTS</h3>
 
@@ -240,48 +238,38 @@ export default function CadSession() {
 
           <hr className="mb-4" />
 
-          <h3 className="text-sm font-semibold mb-2 text-black">SELECT LAYERS</h3>
+          <h3 className="text-sm font-semibold mb-2 text-black">LAYERS</h3>
 
-          <div className="space-y-2">
-            {layers.map((layer) => {
-              const isComplete = layer.status === "complete";
-              const isInProgress = layer.status === "in-progress";
-              const isLocked = layer.status === "locked";
-
+          {/* Dynamic layer panel — derived from placed bricks, scrollable */}
+          <div
+            className="flex-1 min-h-0 space-y-3 overflow-y-auto"
+            style={{ scrollbarWidth: "none" }}
+          >
+            {usedLayers.length === 0 && (
+              <p className="text-xs text-gray-400">No bricks placed yet.</p>
+            )}
+            {usedLayers.map((layerNum) => {
+              const layerBricks = bricks.filter((b) => b.layer === layerNum);
               return (
-                <div
-                  key={layer.name}
-                  className={`flex justify-between items-center px-3 py-2 rounded text-sm text-black
-                    ${isLocked
-                      ? "bg-gray-200 text-gray-600"
-                      : "bg-white"
-                    }
-                  `}
-                >
-                  <span>{layer.name}</span>
-
-                  {isComplete && (
-                    <span className="text-green-600">
-                      Complete
-                    </span>
-                  )}
-
-                  {isInProgress && (
-                    <span className="text-indigo-600">
-                      In Progress
-                    </span>
-                  )}
-
-                  {isLocked && (
-                    <span>Locked</span>
-                  )}
+                <div key={layerNum}>
+                  <p className="text-xs font-semibold text-gray-500 mb-1">Layer {layerNum}</p>
+                  <div className="space-y-1">
+                    {layerBricks.map((brick) => (
+                      <div
+                        key={brick.id}
+                        className="flex items-center px-3 py-1.5 rounded text-xs bg-white text-black"
+                      >
+                        <span>{brick.dimensions[0]}×{brick.dimensions[2]}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* cad canvas — right-drag orbits, scroll to zoom, long-press right shows context menu */}
+        {/* cad canvas: right-drag orbits, scroll to zoom, long-press right shows context menu */}
         <div
           className="flex-1 relative"
           style={{ height: "calc(100vh - 56px)" }}

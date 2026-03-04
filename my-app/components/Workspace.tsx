@@ -11,6 +11,7 @@ export interface BrickData {
     position: [number, number, number];
     dimensions: [number, number, number];
     color: string;
+    layer: number;
 }
 
 export function snapToGrid(intersectValue: number, dimensionSize: number): number {
@@ -34,6 +35,7 @@ export default function Workspace() {
                 position: [x, y, z],
                 dimensions: currentTool,
                 color: "#ff0000",
+                layer: Math.floor(y) + 1,
             },
         ]);
     };
