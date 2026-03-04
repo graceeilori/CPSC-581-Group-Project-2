@@ -156,8 +156,8 @@ export default function CadSession() {
 
         {/* right buttons */}
         <div className="flex items-center gap-4">
-          <button className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600">
-            Leave Class
+          <button className="px-4 py-2 text-neutral-900 border border-neutral-900 text-sm font-medium rounded-md cursor-pointer">
+            Edit Module
           </button>
 
           <button

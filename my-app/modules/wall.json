@@ -1,0 +1,155 @@
+{
+    "name": "The Wall",
+    "targetData": [
+        {
+            "id": "16f12db1-59d6-4cea-b720-337ed13a9f48",
+            "position": [
+                0.5,
+                0.2,
+                -1
+            ],
+            "dimensions": [
+                1,
+                0.4,
+                6
+            ],
+            "color": "#E8B987",
+            "layer": 1
+        },
+        {
+            "id": "daf6db1a-599a-459a-8edd-b728ab28fec9",
+            "position": [
+                0.5,
+                0.9,
+                -3
+            ],
+            "dimensions": [
+                1,
+                1,
+                2
+            ],
+            "color": "#BF5426",
+            "layer": 1
+        },
+        {
+            "id": "de1e7eca-d07a-4d09-9e74-385053cbe72f",
+            "position": [
+                0.5,
+                0.9,
+                -1
+            ],
+            "dimensions": [
+                1,
+                1,
+                2
+            ],
+            "color": "#D2892D",
+            "layer": 1
+        },
+        {
+            "id": "7c946d4c-eb74-4913-893b-7b03485ecab8",
+            "position": [
+                0.5,
+                0.9,
+                1
+            ],
+            "dimensions": [
+                1,
+                1,
+                2
+            ],
+            "color": "#BF5426",
+            "layer": 1
+        },
+        {
+            "id": "0d70fe3a-0da1-4c55-b817-3782e3037b2a",
+            "position": [
+                0.5,
+                1.9,
+                -3
+            ],
+            "dimensions": [
+                1,
+                1,
+                2
+            ],
+            "color": "#D2892D",
+            "layer": 2
+        },
+        {
+            "id": "02e4af3f-bc4f-4dab-9a0e-3ac359f54a0b",
+            "position": [
+                0.5,
+                1.9,
+                -1
+            ],
+            "dimensions": [
+                1,
+                1,
+                2
+            ],
+            "color": "#BF5426",
+            "layer": 2
+        },
+        {
+            "id": "a253a819-ddcf-4d40-94ba-a44f7ba73a5b",
+            "position": [
+                0.5,
+                1.9,
+                1
+            ],
+            "dimensions": [
+                1,
+                1,
+                2
+            ],
+            "color": "#D2892D",
+            "layer": 2
+        },
+        {
+            "id": "8a4eea68-0fe9-483f-bed7-8b3b797b1d74",
+            "position": [
+                0.5,
+                2.9,
+                -3
+            ],
+            "dimensions": [
+                1,
+                1,
+                2
+            ],
+            "color": "#BF5426",
+            "layer": 3
+        },
+        {
+            "id": "3aaa5329-22df-4168-8396-fada935bd681",
+            "position": [
+                0.5,
+                2.9,
+                1
+            ],
+            "dimensions": [
+                1,
+                1,
+                2
+            ],
+            "color": "#BF5426",
+            "layer": 3
+        },
+        {
+            "id": "5c6ad728-3a22-4c31-bd92-f92cfc9be35f",
+            "position": [
+                0.5,
+                2.9,
+                -1
+            ],
+            "dimensions": [
+                1,
+                1,
+                2
+            ],
+            "color": "#D2892D",
+            "layer": 3
+        }
+    ]
+}

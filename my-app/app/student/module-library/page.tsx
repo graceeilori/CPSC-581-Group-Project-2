@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 
 export default function StudentModuleLibrary() {
@@ -31,16 +32,16 @@ export default function StudentModuleLibrary() {
           <div
             onClick={() => setActiveTab("modules")}
             className={`px-4 py-2 rounded-lg cursor-pointer ${activeTab === "modules"
-                ? "bg-indigo-200 text-indigo-700"
-                : "hover:bg-gray-200"}`}>
+              ? "bg-indigo-200 text-indigo-700"
+              : "hover:bg-gray-200"}`}>
             Module Library
           </div>
 
           <div
             onClick={() => setActiveTab("alerts")}
             className={`px-4 py-2 rounded-lg cursor-pointer ${activeTab === "alerts"
-                ? "bg-indigo-200 text-indigo-700"
-                : "hover:bg-gray-200"}`} >
+              ? "bg-indigo-200 text-indigo-700"
+              : "hover:bg-gray-200"}`} >
             Your Progress
           </div>
         </nav>
@@ -49,10 +50,25 @@ export default function StudentModuleLibrary() {
       {/* content area */}
       <div className="flex-1 p-10">
 
-        {/* modules, can have status set up above */}
+        {/* temp classroom link */}
         {activeTab === "modules" && (
           <>
             <h2 className="text-2xl font-bold mb-8 text-black">Module Library</h2>
+
+            <div className="flex flex-col w-1/3 mb-6">
+              <Link
+                href={`/student/classroom`}
+                className="group bg-white rounded-md overflow-hidden border border-gray-200 cursor-pointer"
+              >
+                <div className="px-4 py-3 border-t border-gray-100">
+                  <span className="text-md font-medium text-gray-900 group-hover:text-indigo-700 transition-colors">
+                    Classroom
+                  </span>
+                </div>
+              </Link>
+            </div>
+
+
 
             <div className="grid grid-cols-3 gap-6">
               {activities.map((activity, index) => {
