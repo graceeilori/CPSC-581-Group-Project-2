@@ -1,0 +1,21 @@
+Grace - March 4
+
+What I have implemented:
+- Working CAD environment for placing bricks, bricks can be stacked and layers are shown in the layers panel
+    - Different views of board available
+- Latest working version of the cad view is in student/classroom (do not edit except you are adding features). 
+    - The version in student/work-area also works but doesnt have the objective outline, build off this except you are creating a module
+- a way to create and export a module, do this in expert/module-library/3 (Create New Module)
+    - export the json of a created module to create an objective model for the student (this is shown in student/classroom)
+- Important caveat: For each new type of module, you need to add the new bricks involved and add the corresponding color to the tools array
+
+Task suggestions for the next person (primary):
+- Editing positions of placed bricks and deletion of placed bricks
+- Mark a layer as completed when all bricks in that layer are placed and match the outline (this would later be linked to the haptic feedback)
+- Add the color of a selected brick to the layers panel like in the expert dashboard after a module is created
+- Consider making another module, maybe a little more complex than the wall, like a pyramid
+
+Other tasks (secondary):
+- Standardize the dashboard design for students (checkout the expert dashboard for updated design)
+- Consider removing /expert and lead straight to the expert dashboard - content are the same (same thing as /student)
+- After exporting a created module, it doesnt get saved to the dashboard (you have to manually add it after creating the json) - might want to find a more efficient way
