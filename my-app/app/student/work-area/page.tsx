@@ -6,7 +6,8 @@ import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Baseplate } from "@/components/Baseplate";
-import { FloorPlane } from "@/components/FloorPlane";
+import { Brick } from "@/components/Brick";
+import { type BrickData } from "@/components/Workspace";
 
 function CameraResetter({ onReady }: { onReady: (reset: () => void) => void }) {
   const { controls } = useThree();
@@ -21,9 +22,22 @@ function CameraResetter({ onReady }: { onReady: (reset: () => void) => void }) {
 export default function CadSession() {
   const [selectedTool, setSelectedTool] = useState("Brick 2x4");
   const [showSettings, setShowSettings] = useState(false);
-  const [baseplateSize, setBaseplateSize] = useState(12);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  const [bricks, setBricks] = useState<BrickData[]>([]);
   const resetCameraRef = useRef<(() => void) | null>(null);
+
+  const BASEPLATE_SIZE = 10; // fixed — no expansion
+
+  // Maps the sidebar label to [width, height, depth] in world/grid units
+  const TOOL_DIMS: Record<string, [number, number, number]> = {
+    "Brick 2x4": [2, 1, 4],
+    "Brick 2x2": [2, 1, 2],
+    "Plate 1x2": [1, 0.4, 2],
+    "Brick 1x4": [1, 1, 4],
+    "Plate 2x2": [2, 0.4, 2],
+    "Brick 1x1": [1, 1, 1],
+  };
+  const currentTool = TOOL_DIMS[selectedTool] ?? [2, 1, 4];
 
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressOrigin = useRef<{ x: number; y: number } | null>(null);
@@ -70,11 +84,24 @@ export default function CadSession() {
     pressOrigin.current = null;
   }
 
-  function expandIfNearEdge(gridX: number, gridZ: number) {
-    const half = baseplateSize / 2;
-    if (Math.abs(gridX) >= half - 2 || Math.abs(gridZ) >= half - 2) {
-      setBaseplateSize((prev) => prev + 6);
-    }
+  function handlePlaceBrick(x: number, y: number, z: number) {
+    const [w, , d] = currentTool;
+    const half = BASEPLATE_SIZE / 2;
+    // Reject if any edge of the brick footprint falls outside the plate
+    if (
+      x - w / 2 < -half || x + w / 2 > half ||
+      z - d / 2 < -half || z + d / 2 > half
+    ) return;
+
+    setBricks((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        position: [x, y, z],
+        dimensions: currentTool,
+        color: "#e63946",
+      },
+    ]);
   }
 
   const tools = [
@@ -246,7 +273,22 @@ export default function CadSession() {
             <ambientLight intensity={0.9} />
             <directionalLight position={[10, 20, 10]} intensity={0.5} castShadow />
 
-            <Baseplate />
+            <Baseplate
+              size={BASEPLATE_SIZE}
+              currentTool={currentTool}
+              onPlaceBrick={handlePlaceBrick}
+            />
+
+            {bricks.map((brick) => (
+              <Brick
+                key={brick.id}
+                position={brick.position}
+                dimensions={brick.dimensions}
+                color={brick.color}
+                currentTool={currentTool}
+                onPlaceBrick={handlePlaceBrick}
+              />
+            ))}
 
             <OrbitControls
               makeDefault

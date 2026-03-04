@@ -2,9 +2,13 @@
 
 import { useRef, useMemo, useEffect } from "react";
 import * as THREE from "three";
+import { ThreeEvent } from "@react-three/fiber";
+import { snapToGrid } from "./Workspace";
 
 interface BaseplateProps {
     size?: number;
+    currentTool: [number, number, number]; // [width, height, depth]
+    onPlaceBrick: (x: number, y: number, z: number) => void;
 }
 
 const STUD_RADIUS = 0.18;
@@ -22,7 +26,7 @@ const STUD_COLOR = new THREE.Color("#CAD5E8");
 /**
  * Lego-style baseplate
  */
-export function Baseplate({ size = 4 }: BaseplateProps) {
+export function Baseplate({ size = 4, currentTool, onPlaceBrick }: BaseplateProps) {
     const instancedRef = useRef<THREE.InstancedMesh>(null!);
     const half = size / 2;
 
@@ -74,9 +78,20 @@ export function Baseplate({ size = 4 }: BaseplateProps) {
         []
     );
 
+    function handleClick(e: ThreeEvent<MouseEvent>) {
+        e.stopPropagation();
+        const { x, z } = e.point;
+        const snappedX = snapToGrid(x, currentTool[0]);
+        const snappedZ = snapToGrid(z, currentTool[2]);
+        // First layer: brick centre sits half its height above the plate surface (y=0)
+        const snappedY = currentTool[1] / 2;
+        onPlaceBrick(snappedX, snappedY, snappedZ);
+    }
+
     return (
         <group>
-            <mesh position={[0, PLATE_Y, 0]} receiveShadow>
+            {/* Clickable plate surface */}
+            <mesh position={[0, PLATE_Y, 0]} receiveShadow onClick={handleClick}>
                 <boxGeometry args={[size, PLATE_THICKNESS, size]} />
                 <meshStandardMaterial color={PLATE_COLOR} />
             </mesh>
