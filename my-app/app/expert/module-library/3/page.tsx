@@ -142,7 +142,7 @@ function handleUndo() {
         const layer = Math.floor(y) + 1;
 
         setHistory((prev) => [...prev, bricks]);
-        
+
         setBricks((prev) => [
             ...prev,
             {
@@ -245,6 +245,7 @@ function handleUndo() {
                         )}
                         {usedLayers.map((layerNum) => {
                             const layerBricks = bricks.filter((b) => b.layer === layerNum);
+                            
                             return (
                                 <div key={layerNum}>
                                     <p className="text-xs font-semibold text-gray-500 mb-1">Layer {layerNum}</p>

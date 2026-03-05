@@ -33,7 +33,9 @@ export default function CadSession() {
   const [showSettings, setShowSettings] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [bricks, setBricks] = useState<BrickData[]>([]);
+  const [history, setHistory] = useState<BrickData[][]>([]);
   const resetCameraRef = useRef<(() => void) | null>(null);
+   const [completedLayers, setCompletedLayers] = useState<number[]>([]);
 
   const module = { name: "The Wall" };
 
@@ -98,6 +100,53 @@ export default function CadSession() {
   function deleteBrick(id: string) {
     setBricks((prev) => prev.filter((b) => b.id !== id));
 }
+
+function handleUndo() {
+    setHistory((prev) => {
+      if (prev.length === 0) return prev;
+
+      const previousState = prev[prev.length - 1];
+      setBricks(previousState);
+
+      return prev.slice(0, -1);
+    });
+  }
+
+   const usedLayers = Array.from(new Set(bricks.map((b) => b.layer))).sort((a, z) => a - z);
+    useEffect(() => {
+    const targetData = wallData.targetData as BrickData[];
+    if (!targetData || targetData.length === 0) return;
+  
+    usedLayers.forEach(layerNum => {
+      const layerBricks = bricks.filter(b => b.layer === layerNum);
+      const targetLayerBricks = targetData.filter(b => b.layer === layerNum);
+  
+      // layer is complete if every brick in the target layer exists in placed bricks
+      const layerDone = targetLayerBricks.every((tb: { position: number[]; dimensions: number[]; }) =>
+        layerBricks.some(b =>
+          b.position[0] === tb.position[0] &&
+          b.position[1] === tb.position[1] &&
+          b.position[2] === tb.position[2] &&
+          b.dimensions[0] === tb.dimensions[0] &&
+          b.dimensions[1] === tb.dimensions[1] &&
+          b.dimensions[2] === tb.dimensions[2]
+        )
+      );
+  
+      if (layerDone && !completedLayers.includes(layerNum)) {
+        setCompletedLayers(prev => [...prev, layerNum]);
+        alert(`✅ Layer ${layerNum} completed!`);
+      }
+    });
+  
+    // all layers complete when all target layers are in completedLayers
+    const targetLayers = Array.from(new Set(targetData.map(b => b.layer)));
+    if (targetLayers.every(l => completedLayers.includes(l))) {
+      alert("🎉 All layers completed! Module finished!");
+    }
+  
+  }, [bricks, usedLayers, completedLayers]);
+
   // returns true if the new brick's 3D footprint overlaps any existing brick.
   // epsilon prevents adjacent touching faces from counting as collisions.
   function checkCollision(
@@ -133,6 +182,8 @@ export default function CadSession() {
     if (checkCollision(newPos, currentTool, bricks)) return;
 
     const layer = Math.floor(y) + 1;
+
+    setHistory((prev) => [...prev, bricks]);
     setBricks((prev) => [
       ...prev,
       {
@@ -144,8 +195,6 @@ export default function CadSession() {
       },
     ]);
   }
-
-  const usedLayers = Array.from(new Set(bricks.map((b) => b.layer))).sort((a, z) => a - z);
 
   const targetBricks = wallData.targetData as BrickData[];
 
@@ -163,6 +212,14 @@ export default function CadSession() {
         >
           Back to Library
         </Link>
+        <button
+        onClick={handleUndo}
+        className="px-4 py-2 bg-gray-700 text-white text-sm font-medium rounded-md cursor-pointer"
+      >
+        Undo
+      </button>
+
+      
 
         {/* module name */}
         <div className="flex font-medium text-gray-600 items-center justify-center w-full">
@@ -184,6 +241,7 @@ export default function CadSession() {
             {tools.map((tool, idx) => (
               <div
                 key={idx}
+                onClick={() => setSelectedIndex(idx)}
                 className={`p-3 rounded-lg text-center cursor-default transition text-xs font-medium text-black flex items-center justify-center gap-2
                   ${selectedIndex === idx
                     ? "bg-indigo-200 border border-primary-100"
@@ -214,8 +272,12 @@ export default function CadSession() {
 
               return (
                 <div key={`layer-group-${layerNum}`}>
-                  <p className="text-xs font-semibold text-gray-500 mb-1">
+                  <p className="text-xs font-semibold text-gray-500 mb-1 flex items-center gap-1">
                     Layer {layerNum} ({bricksInLayer.length} blocks)
+
+                    {completedLayers.includes(layerNum) && (
+                      <span className="text-green-500">✅</span>
+                    )}
                   </p>
                   <div className="space-y-1 mt-2">
                     {bricksInLayer.map((brick) => (
@@ -258,7 +320,7 @@ export default function CadSession() {
             <Baseplate
               size={BASEPLATE_SIZE}
               currentTool={currentTool}
-              onPlaceBrick={() => { }}
+              onPlaceBrick={handlePlaceBrick}
             />
 
             <ModuleModel targetBricks={wallData.targetData as BrickData[]} />
