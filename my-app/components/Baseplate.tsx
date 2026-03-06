@@ -8,7 +8,7 @@ import { snapToGrid } from "./Workspace";
 interface BaseplateProps {
     size: number;
     currentTool: [number, number, number];
-    onPlaceBrick: (x: number, y: number, z: number) => void;
+    onPlaceBrick?: (x: number, y: number, z: number) => void;
 }
 
 const STUD_RADIUS = 0.18;
@@ -73,6 +73,7 @@ export function Baseplate({ size, currentTool, onPlaceBrick }: BaseplateProps) {
 
     function handleClick(e: ThreeEvent<MouseEvent>) {
         e.stopPropagation();
+        if (!onPlaceBrick) return;
         const { x, z } = e.point;
         const snappedX = snapToGrid(x, currentTool[0]);
         const snappedZ = snapToGrid(z, currentTool[2]);

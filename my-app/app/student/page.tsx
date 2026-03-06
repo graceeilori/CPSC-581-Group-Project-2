@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useRouter } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { socket } from "@/lib/socket";
 
 interface ActiveSession {
@@ -22,19 +21,23 @@ function StudentDashboardInner() {
   const [studentName, setStudentName] = useState("");
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState("");
-  const [activeSession, setActiveSession] = useState<ActiveSession | null>(() => {
-    if (typeof window !== "undefined") {
-      const saved = sessionStorage.getItem("activeSession");
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch (e) {
-          return null;
-        }
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setMounted(true);
+    const saved = sessionStorage.getItem("activeSession");
+    if (saved) {
+      try {
+        setActiveSession(JSON.parse(saved));
+      } catch (e) {
+        // ignore
       }
+    } else {
+      setActiveSession(null);
     }
-    return null;
-  });
+  }, [pathname]);
 
   useEffect(() => {
     if (activeSession) {
@@ -168,131 +171,134 @@ function StudentDashboardInner() {
         </header>
 
         <main className="flex flex-col flex-1 overflow-y-auto bg-gray-50 px-10 py-8">
-
-          {/* Classroom tab (no session) */}
-          {activeTab === "classroom" && !activeSession && (
-            <div className="flex flex-col items-center justify-center h-full gap-4">
-              <img
-                src="/assets/blocks-illustration.svg"
-                alt="No active session"
-                className="w-80 select-none"
-              />
-              <button
-                onClick={() => setShowModal(true)}
-                className="px-6 py-3 bg-primary-100 rounded-2xl inline-flex justify-center items-center gap-2 hover:bg-indigo-700 transition"
-              >
-                <span className="text-white text-md font-medium leading-6">Join Session</span>
-              </button>
-            </div>
-          )}
-
-          {/* Classroom tab (in session) */}
-          {activeTab === "classroom" && activeSession && (
-            <div className="flex flex-col gap-6">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Active Class</h1>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                <div className="bg-white rounded-xl overflow-hidden border border-gray-200 transition">
-                  {/* Card header */}
-                  <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
-                    <div className="flex items-center gap-2.5">
-                      <span className="font-semibold text-sm text-gray-900 truncate">
-                        {activeSession.className}
-                      </span>
-                    </div>
-                    {/* Pulsing live indicator */}
-                    <span className="flex w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" title="Live Session"></span>
-                  </div>
-
-                  {/* Card body */}
-                  <div className="p-4 flex flex-col gap-5">
-                    <div className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-2.5 border border-gray-100">
-                      <span className="text-xs font-medium text-gray-500">Session Code</span>
-                      <span className="text-sm font-bold tracking-[0.2em] text-primary-100">
-                        {activeSession.code}
-                      </span>
-                    </div>
-
-                    <div className="flex gap-2.5">
-                      <button
-                        onClick={() => router.push(`/student/classroom?sessionName=${encodeURIComponent(activeSession.className)}`)}
-                        className="flex-1 py-2 bg-primary-100 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition"
-                      >
-                        Open Workspace
-                      </button>
-                      <button
-                        onClick={handleLeave}
-                        className="p-2 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition flex items-center justify-center shrink-0 group"
-                        title="Leave Class"
-                      >
-                        <img src="/assets/exit-red.svg" alt="Exit" className="w-5 h-5 flex-shrink-0" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Module Library tab */}
-          {activeTab === "modules" && (
+          {!mounted ? null : (
             <>
-              <h1 className="text-2xl font-bold text-gray-900 mb-6">Module Library</h1>
-              <div className="grid grid-cols-3 gap-6">
-                {activities.map((activity, index) => {
-                  const isLocked = activity.status === "locked";
-                  const isCompleted = activity.status === "completed";
-                  const isInProgress = activity.status === "in-progress";
-                  return (
-                    <div
-                      key={index}
-                      onClick={() => { if (!isLocked) router.push("/student/work-area"); }}
-                      className={`bg-white rounded-xl overflow-hidden border border-gray-200 cursor-pointer group transition
-                        ${isLocked ? "opacity-50 cursor-not-allowed" : "hover:shadow-md hover:border-indigo-200"}`}
-                    >
-                      <div className="h-32 bg-[#dce8f5] flex items-center justify-center">
-                        {isCompleted && (
-                          <span className="text-3xl">✓</span>
-                        )}
-                        {isLocked && (
-                          <span className="text-3xl">🔒</span>
-                        )}
+              {/* Classroom tab (no session) */}
+              {activeTab === "classroom" && !activeSession && (
+                <div className="flex flex-col items-center justify-center h-full gap-4">
+                  <img
+                    src="/assets/blocks-illustration.svg"
+                    alt="No active session"
+                    className="w-80 select-none"
+                  />
+                  <button
+                    onClick={() => setShowModal(true)}
+                    className="px-6 py-3 bg-primary-100 rounded-2xl inline-flex justify-center items-center gap-2 hover:bg-indigo-700 transition"
+                  >
+                    <span className="text-white text-md font-medium leading-6">Join Session</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Classroom tab (in session) */}
+              {activeTab === "classroom" && activeSession && (
+                <div className="flex flex-col gap-6">
+                  <h1 className="text-2xl font-bold text-gray-900 mb-2">Active Class</h1>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <div className="bg-white rounded-xl overflow-hidden border border-gray-200 transition">
+                      {/* Card header */}
+                      <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
+                        <div className="flex items-center gap-2.5">
+                          <span className="font-semibold text-sm text-gray-900 truncate">
+                            {activeSession.className}
+                          </span>
+                        </div>
+                        {/* Pulsing live indicator */}
+                        <span className="flex w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" title="Live Session"></span>
                       </div>
-                      <div className="px-4 py-3 border-t border-gray-100">
-                        <span className="text-sm font-medium text-gray-900 group-hover:text-indigo-700 transition-colors">
-                          {activity.name}
-                        </span>
-                        <div className="mt-1">
-                          {isCompleted && <span className="text-xs text-green-600 font-semibold">Completed</span>}
-                          {isInProgress && <span className="text-xs text-amber-500 font-semibold">In Progress</span>}
-                          {isLocked && <span className="text-xs text-gray-400">Locked</span>}
+
+                      {/* Card body */}
+                      <div className="p-4 flex flex-col gap-5">
+                        <div className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-2.5 border border-gray-100">
+                          <span className="text-xs font-medium text-gray-500">Session Code</span>
+                          <span className="text-sm font-bold tracking-[0.2em] text-primary-100">
+                            {activeSession.code}
+                          </span>
+                        </div>
+
+                        <div className="flex gap-2.5">
+                          <button
+                            onClick={() => router.push(`/student/classroom?sessionName=${encodeURIComponent(activeSession.className)}`)}
+                            className="flex-1 py-2 bg-primary-100 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition"
+                          >
+                            Open Workspace
+                          </button>
+                          <button
+                            onClick={handleLeave}
+                            className="p-2 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition flex items-center justify-center shrink-0 group"
+                            title="Leave Class"
+                          >
+                            <img src="/assets/exit-red.svg" alt="Exit" className="w-5 h-5 flex-shrink-0" />
+                          </button>
                         </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
+                  </div>
+                </div>
+              )}
 
-          {/* Your Progress tab */}
-          {activeTab === "progress" && (
-            <>
-              <h1 className="text-2xl font-bold text-gray-900 mb-6">Your Progress</h1>
-              <div className="space-y-3">
-                <div className="bg-red-50 border border-red-200 px-4 py-3 rounded-lg text-sm text-red-700">
-                  You requested help
-                </div>
-                <div className="bg-blue-50 border border-blue-200 px-4 py-3 rounded-lg text-sm text-blue-700">
-                  You started activity "Learn Your Tools"
-                </div>
-                <div className="bg-blue-50 border border-blue-200 px-4 py-3 rounded-lg text-sm text-blue-700">
-                  You completed activity "Getting Acquainted with CAD"
-                </div>
-                <div className="bg-blue-50 border border-blue-200 px-4 py-3 rounded-lg text-sm text-blue-700">
-                  You started activity "Getting Acquainted with CAD"
-                </div>
-              </div>
+              {/* Module Library tab */}
+              {activeTab === "modules" && (
+                <>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-6">Module Library</h1>
+                  <div className="grid grid-cols-3 gap-6">
+                    {activities.map((activity, index) => {
+                      const isLocked = activity.status === "locked";
+                      const isCompleted = activity.status === "completed";
+                      const isInProgress = activity.status === "in-progress";
+                      return (
+                        <div
+                          key={index}
+                          onClick={() => { if (!isLocked) router.push("/student/work-area"); }}
+                          className={`bg-white rounded-xl overflow-hidden border border-gray-200 cursor-pointer group transition
+                        ${isLocked ? "opacity-50 cursor-not-allowed" : "hover:shadow-md hover:border-indigo-200"}`}
+                        >
+                          <div className="h-32 bg-[#dce8f5] flex items-center justify-center">
+                            {isCompleted && (
+                              <span className="text-3xl">✓</span>
+                            )}
+                            {isLocked && (
+                              <span className="text-3xl">🔒</span>
+                            )}
+                          </div>
+                          <div className="px-4 py-3 border-t border-gray-100">
+                            <span className="text-sm font-medium text-gray-900 group-hover:text-indigo-700 transition-colors">
+                              {activity.name}
+                            </span>
+                            <div className="mt-1">
+                              {isCompleted && <span className="text-xs text-green-600 font-semibold">Completed</span>}
+                              {isInProgress && <span className="text-xs text-amber-500 font-semibold">In Progress</span>}
+                              {isLocked && <span className="text-xs text-gray-400">Locked</span>}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              {/* Your Progress tab */}
+              {activeTab === "progress" && (
+                <>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-6">Your Progress</h1>
+                  <div className="space-y-3">
+                    <div className="bg-red-50 border border-red-200 px-4 py-3 rounded-lg text-sm text-red-700">
+                      You requested help
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 px-4 py-3 rounded-lg text-sm text-blue-700">
+                      You started activity "Learn Your Tools"
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 px-4 py-3 rounded-lg text-sm text-blue-700">
+                      You completed activity "Getting Acquainted with CAD"
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 px-4 py-3 rounded-lg text-sm text-blue-700">
+                      You started activity "Getting Acquainted with CAD"
+                    </div>
+                  </div>
+                </>
+              )}
             </>
           )}
         </main>

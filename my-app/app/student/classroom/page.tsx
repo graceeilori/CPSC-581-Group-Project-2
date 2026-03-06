@@ -187,6 +187,11 @@ function CadSessionInner() {
         router.push("/student");
     }
 
+    // Sync bricks with expert whenever they change
+    useEffect(() => {
+        socket.emit("board:update", { bricks });
+    }, [bricks]);
+
     // Derive unique layer numbers from placed bricks
     const usedLayers = Array.from(new Set(bricks.map((b) => b.layer))).sort((a, z) => a - z);
 
