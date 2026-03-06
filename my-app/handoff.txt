@@ -31,3 +31,4 @@ JJ March 5th
 - blocks are draggable, but are free-moving and do not snap to grid. Occassionally makes an extra brick on let go as well
 - Created ghost in the pyramid module, and set up the student workspace to have different modules that can be uniquely modified
 - also added some comments, and a little bit of organizing 
+- Testing JJ branch creation.
