@@ -39,7 +39,7 @@ export default function ExpertHome() {
 
             {/* module 1 */}
             <div
-              onClick={() => router.push("/expert/module-library")}
+              onClick={() => router.push("/expert?tab=modules")}
               className="relative h-64 rounded-xl overflow-hidden cursor-pointer group"
               style={{
                 backgroundImage: "url('/intro.jpeg')",

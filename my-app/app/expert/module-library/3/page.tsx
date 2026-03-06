@@ -91,19 +91,19 @@ export default function CadSession() {
     }
 
     function deleteBrick(id: string) {
-    setBricks((prev) => prev.filter((b) => b.id !== id));
-}
+        setBricks((prev) => prev.filter((b) => b.id !== id));
+    }
 
-function handleUndo() {
-    setHistory((prev) => {
-      if (prev.length === 0) return prev;
+    function handleUndo() {
+        setHistory((prev) => {
+            if (prev.length === 0) return prev;
 
-      const previousState = prev[prev.length - 1];
-      setBricks(previousState);
+            const previousState = prev[prev.length - 1];
+            setBricks(previousState);
 
-      return prev.slice(0, -1);
-    });
-  }
+            return prev.slice(0, -1);
+        });
+    }
 
     // returns true if the new brick's 3D footprint overlaps any existing brick.
     // epsilon prevents adjacent touching faces from counting as collisions.
@@ -165,18 +165,18 @@ function handleUndo() {
             <div className="h-14 bg-white shadow flex items-center justify-between px-6">
 
                 <Link
-                    href="/expert/module-library"
+                    href="/expert?tab=modules"
                     className="font-medium text-gray-700 hover:text-gray-900 transition flex items-center gap-2"
                 >
                     Back to Library
                 </Link>
 
-                 <button
-        onClick={handleUndo}
-        className="px-4 py-2 bg-gray-700 text-white text-sm font-medium rounded-md cursor-pointer"
-      >
-        Undo
-      </button>
+                <button
+                    onClick={handleUndo}
+                    className="px-4 py-2 bg-gray-700 text-white text-sm font-medium rounded-md cursor-pointer"
+                >
+                    Undo
+                </button>
 
                 {/* module name */}
                 <div className="font-medium text-gray-600">
@@ -245,7 +245,7 @@ function handleUndo() {
                         )}
                         {usedLayers.map((layerNum) => {
                             const layerBricks = bricks.filter((b) => b.layer === layerNum);
-                            
+
                             return (
                                 <div key={layerNum}>
                                     <p className="text-xs font-semibold text-gray-500 mb-1">Layer {layerNum}</p>

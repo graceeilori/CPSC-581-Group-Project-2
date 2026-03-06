@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { socket } from "@/lib/socket";
 
 interface StudentEntry {
@@ -26,8 +27,9 @@ function initials(name: string) {
     .slice(0, 2);
 }
 
-export default function ExpertDashboard() {
-  const [activeTab, setActiveTab] = useState("classroom");
+function ExpertDashboardInner() {
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") ?? "classroom");
 
   const [showModal, setShowModal] = useState(false);
   const [sessionName, setSessionName] = useState("");
@@ -132,10 +134,10 @@ export default function ExpertDashboard() {
       {/* Sidebar */}
       <aside className="w-64 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col">
 
-        <div className="flex items-center gap-3 px-5 py-4">
+        <Link href="/" className="flex items-center gap-3 px-5 py-4 hover:opacity-80 transition">
           <div className="w-8 h-8 rounded bg-primary-100 flex-shrink-0" />
           <span className="font-semibold text-gray-900 text-md">App Name</span>
-        </div>
+        </Link>
 
         <nav className="flex-1 px-3 py-4 space-y-4">
 
@@ -185,7 +187,12 @@ export default function ExpertDashboard() {
 
       {/* Main content */}
       <div className="flex flex-col flex-1 min-w-0">
-        <header className="h-14 flex-shrink-0 bg-white border-b border-gray-200" />
+
+        <header className="h-14 flex-shrink-0 bg-white border-b border-gray-200 flex items-center justify-center px-6">
+          {activeSession && (
+            <span className="text-sm text-gray-400">{activeSession.sessionName}</span>
+          )}
+        </header>
 
         <main className="flex flex-col flex-1 overflow-y-auto bg-gray-50 px-10 py-8">
 
@@ -242,7 +249,6 @@ export default function ExpertDashboard() {
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-400 italic">{activeSession.sessionName}</span>
                   <button
                     onClick={handleEndSession}
                     className="rounded-lg flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition"
@@ -262,7 +268,7 @@ export default function ExpertDashboard() {
                 <div className="flex flex-col items-center justify-center flex-1 gap-3 py-16 text-gray-400">
                   <img
                     src="/assets/user-multiple.svg"
-                    className="w-40 select-none"
+                    className="w-32 select-none"
                   />
                   <p className="text-sm">Waiting for students to join…</p>
                 </div>
@@ -274,7 +280,7 @@ export default function ExpertDashboard() {
                   {activeSession.students.map((student) => (
                     <div
                       key={student.socketId}
-                      className={`bg-white rounded-xl overflow-hidden border shadow-sm transition
+                      className={`bg-white rounded-xl overflow-hidden border transition
                         ${student.needsHelp ? "border-red-400 shadow-red-100" : "border-gray-200"}`}
                     >
                       {/* Card header */}
@@ -297,7 +303,7 @@ export default function ExpertDashboard() {
                       </div>
 
                       {/* Board preview */}
-                      <div className="h-36 flex items-center justify-center bg-gray-100 relative">
+                      <div className="h-36 flex items-center justify-center bg-[#E8EDF5] relative">
                         {student.bricks.length === 0 ? (
                           <span className="text-xs text-gray-400 italic">No bricks yet</span>
                         ) : (
@@ -409,5 +415,13 @@ export default function ExpertDashboard() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ExpertDashboard() {
+  return (
+    <Suspense>
+      <ExpertDashboardInner />
+    </Suspense>
   );
 }

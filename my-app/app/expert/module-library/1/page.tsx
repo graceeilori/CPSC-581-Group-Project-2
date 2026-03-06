@@ -100,7 +100,7 @@ export default function CadSession() {
     pressOrigin.current = null;
   }
 
-   function deleteBrick(id: string) {
+  function deleteBrick(id: string) {
     setBricks((prev) => prev.filter((b) => b.id !== id));
   }
 
@@ -117,38 +117,38 @@ export default function CadSession() {
 
   const usedLayers = Array.from(new Set(bricks.map((b) => b.layer))).sort((a, z) => a - z);
   useEffect(() => {
-  const targetData = wallData.targetData as BrickData[];
-  if (!targetData || targetData.length === 0) return;
+    const targetData = wallData.targetData as BrickData[];
+    if (!targetData || targetData.length === 0) return;
 
-  usedLayers.forEach(layerNum => {
-    const layerBricks = bricks.filter(b => b.layer === layerNum);
-    const targetLayerBricks = targetData.filter(b => b.layer === layerNum);
+    usedLayers.forEach(layerNum => {
+      const layerBricks = bricks.filter(b => b.layer === layerNum);
+      const targetLayerBricks = targetData.filter(b => b.layer === layerNum);
 
-    // layer is complete if every brick in the target layer exists in placed bricks
-    const layerDone = targetLayerBricks.every((tb: { position: number[]; dimensions: number[]; }) =>
-      layerBricks.some(b =>
-        b.position[0] === tb.position[0] &&
-        b.position[1] === tb.position[1] &&
-        b.position[2] === tb.position[2] &&
-        b.dimensions[0] === tb.dimensions[0] &&
-        b.dimensions[1] === tb.dimensions[1] &&
-        b.dimensions[2] === tb.dimensions[2]
-      )
-    );
+      // layer is complete if every brick in the target layer exists in placed bricks
+      const layerDone = targetLayerBricks.every((tb: { position: number[]; dimensions: number[]; }) =>
+        layerBricks.some(b =>
+          b.position[0] === tb.position[0] &&
+          b.position[1] === tb.position[1] &&
+          b.position[2] === tb.position[2] &&
+          b.dimensions[0] === tb.dimensions[0] &&
+          b.dimensions[1] === tb.dimensions[1] &&
+          b.dimensions[2] === tb.dimensions[2]
+        )
+      );
 
-    if (layerDone && !completedLayers.includes(layerNum)) {
-      setCompletedLayers(prev => [...prev, layerNum]);
-      alert(`Layer ${layerNum} completed!`);
+      if (layerDone && !completedLayers.includes(layerNum)) {
+        setCompletedLayers(prev => [...prev, layerNum]);
+        alert(`Layer ${layerNum} completed!`);
+      }
+    });
+
+    // all layers complete when all target layers are in completedLayers
+    const targetLayers = Array.from(new Set(targetData.map(b => b.layer)));
+    if (targetLayers.every(l => completedLayers.includes(l))) {
+      alert("All layers completed! Module finished!");
     }
-  });
 
-  // all layers complete when all target layers are in completedLayers
-  const targetLayers = Array.from(new Set(targetData.map(b => b.layer)));
-  if (targetLayers.every(l => completedLayers.includes(l))) {
-    alert("All layers completed! Module finished!");
-  }
-
-}, [bricks, usedLayers, completedLayers]);
+  }, [bricks, usedLayers, completedLayers]);
   // returns true if the new brick's 3D footprint overlaps any existing brick.
   // epsilon prevents adjacent touching faces from counting as collisions.
   function checkCollision(
@@ -210,18 +210,18 @@ export default function CadSession() {
       <div className="h-14 bg-white shadow flex items-center justify-between px-6">
 
         <Link
-          href="/expert/module-library"
+          href="/expert?tab=modules"
           className="flex font-medium text-gray-700 hover:text-gray-900 transition w-100 items-center gap-2"
         >
           Back to Library
         </Link>
 
         <button
-        onClick={handleUndo}
-        className="px-4 py-2 bg-gray-700 text-white text-sm font-medium rounded-md cursor-pointer"
-      >
-        Undo
-      </button>
+          onClick={handleUndo}
+          className="px-4 py-2 bg-gray-700 text-white text-sm font-medium rounded-md cursor-pointer"
+        >
+          Undo
+        </button>
 
         {/* module name */}
         <div className="flex font-medium text-gray-600 items-center justify-center w-full">
