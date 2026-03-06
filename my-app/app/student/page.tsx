@@ -105,6 +105,7 @@ function StudentDashboardInner() {
     setShowModal(false);
     setJoinCode("");
     setJoinError("");
+    
   }
 
   return (
@@ -250,7 +251,7 @@ function StudentDashboardInner() {
                       return (
                         <div
                           key={index}
-                          onClick={() => { if (!isLocked) router.push("/student/work-area"); }}
+                          onClick={() => { if (!isLocked) router.push(`/student/work-area/${index}`); }}
                           className={`bg-white rounded-xl overflow-hidden border border-gray-200 cursor-pointer group transition
                         ${isLocked ? "opacity-50 cursor-not-allowed" : "hover:shadow-md hover:border-indigo-200"}`}
                         >

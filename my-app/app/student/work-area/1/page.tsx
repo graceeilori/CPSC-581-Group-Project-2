@@ -1,6 +1,6 @@
 "use client";
 
-//Pyramid Specific Module
+//EVentual Bridge Module
 import { useRef, useState, useCallback, useEffect } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
@@ -31,12 +31,9 @@ export default function CadSession() {
 
   const BASEPLATE_SIZE = 10;
 
-  // brick types for "The Pyramid"
+  // brick types for "The Bridge"
   const tools: { label: string; dims: [number, number, number]; color: string }[] = [
     { label: "Brick 1x2", dims: [1, 1, 2], color: "#457B9D" },
-    { label: "Brick 1x2", dims: [1, 1, 2], color: "#A8DADC" },
-    { label: "Brick 2x2", dims: [2, 1, 2], color: "#E63946" },
-    { label: "Plate 2x6", dims: [2, 0.4, 6], color: "#daa569" },
   ];
 
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -290,7 +287,7 @@ export default function CadSession() {
             />
 
             {/* Can probably add an if statement here, to change the ObjectiveModel to save on coping this code. */}
-            <ObjectiveModel targetBricks={pyramidData.targetData as BrickData[]} />
+            {/* <ObjectiveModel targetBricks={pyramidData.targetData as BrickData[]} /> */}
 
             {bricks.map((brick) => (
               <Brick
