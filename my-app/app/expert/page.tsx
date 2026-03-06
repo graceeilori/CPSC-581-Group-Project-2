@@ -4,6 +4,14 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { socket } from "@/lib/socket";
+import { Canvas } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
+import { Baseplate } from "@/components/Baseplate";
+import { Brick } from "@/components/Brick";
+import { ObjectiveModel } from "@/components/ObjectiveModel";
+import wallData from "@/modules/wall.json";
+import pyramidData from "@/modules/pyramid.json";
+import { type BrickData } from "@/components/Workspace";
 
 interface StudentEntry {
   socketId: string;
@@ -15,6 +23,7 @@ interface StudentEntry {
 interface ActiveSession {
   code: string;
   sessionName: string;
+  module: string;
   students: StudentEntry[];
 }
 
@@ -27,6 +36,46 @@ function initials(name: string) {
     .slice(0, 2);
 }
 
+function StudentPreviewCanvas({ student, module, isThumbnail = true }: { student: StudentEntry, module: string, isThumbnail?: boolean }) {
+  const isPyramid = module === "The Pyramid";
+  const targetData = isPyramid ? pyramidData.targetData : wallData.targetData;
+  const currentTool: [number, number, number] = [2, 1, 4]; // Dummy tool for rendering since we disable interactions
+
+  return (
+    <div className={`w-full h-full ${isThumbnail ? "pointer-events-none" : ""}`}>
+      <Canvas
+        camera={{ position: [10, 8, 10], fov: 50 }}
+        style={{ background: "#F1F2F4" }}
+      >
+        <ambientLight intensity={0.9} />
+        <directionalLight position={[10, 20, 10]} intensity={0.5} />
+
+        <Baseplate size={10} currentTool={currentTool} />
+        <ObjectiveModel targetBricks={targetData as BrickData[]} />
+
+        {(student.bricks as BrickData[]).map((brick) => (
+          <Brick
+            key={brick.id}
+            position={brick.position}
+            dimensions={brick.dimensions}
+            color={brick.color}
+            currentTool={currentTool}
+          />
+        ))}
+
+        <OrbitControls
+          autoRotate={isThumbnail}
+          autoRotateSpeed={2}
+          enablePan={!isThumbnail}
+          enableZoom={!isThumbnail}
+          minDistance={5}
+          maxDistance={30}
+        />
+      </Canvas>
+    </div>
+  );
+}
+
 function ExpertDashboardInner() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") ?? "classroom");
@@ -36,6 +85,7 @@ function ExpertDashboardInner() {
   const [selectedModule, setSelectedModule] = useState("The Wall");
   const [isCreating, setIsCreating] = useState(false);
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
+  const [selectedStudentSocketId, setSelectedStudentSocketId] = useState<string | null>(null);
 
   const activities = [
     { name: "The Wall" },
@@ -117,7 +167,7 @@ function ExpertDashboardInner() {
           return;
         }
         setShowModal(false);
-        setActiveSession({ code: res.code!, sessionName: sessionName.trim(), students: [] });
+        setActiveSession({ code: res.code!, sessionName: sessionName.trim(), module: selectedModule, students: [] });
         setSessionName("");
         setSelectedModule("The Wall");
       }
@@ -287,7 +337,8 @@ function ExpertDashboardInner() {
                   {activeSession.students.map((student) => (
                     <div
                       key={student.socketId}
-                      className={`bg-white rounded-xl overflow-hidden border transition
+                      onClick={() => setSelectedStudentSocketId(student.socketId)}
+                      className={`bg-white rounded-xl overflow-hidden border cursor-pointer hover:shadow-md transition
                         ${student.needsHelp ? "border-red-400 shadow-red-100" : "border-gray-200"}`}
                     >
                       {/* Card header */}
@@ -310,12 +361,11 @@ function ExpertDashboardInner() {
                       </div>
 
                       {/* Board preview */}
-                      <div className="h-36 flex items-center justify-center bg-[#E8EDF5] relative">
-                        {student.bricks.length === 0 ? (
-                          <span className="text-xs text-gray-400 italic">No bricks yet</span>
-                        ) : (
-                          <span className="text-xs text-gray-500">{student.bricks.length} bricks</span>
-                        )}
+                      <div className="h-36 flex items-center justify-center bg-[#E8EDF5] relative overflow-hidden">
+                        <StudentPreviewCanvas student={student} module={activeSession.module} />
+                        <div className="absolute bottom-2 right-2 bg-white/80 px-2 py-0.5 rounded text-[10px] font-semibold text-gray-500 backdrop-blur-sm shadow-sm pointer-events-none">
+                          {student.bricks.length} {student.bricks.length === 1 ? "brick" : "bricks"}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -421,6 +471,97 @@ function ExpertDashboardInner() {
           </div>
         </div>
       )}
+
+      {/* Full-Screen Student View (Mimicking a new page) */}
+      {selectedStudentSocketId && activeSession && (() => {
+        const selectedStudent = activeSession.students.find(s => s.socketId === selectedStudentSocketId);
+        if (!selectedStudent) return null;
+
+        const isPyramid = activeSession.module === "The Pyramid";
+        const tools = (isPyramid
+          ? [
+            { label: "Brick 1x2", dims: [1, 1, 2], color: "#BF5426" },
+            { label: "Brick 2x2", dims: [2, 1, 2], color: "#d45050" },
+            { label: "Brick 2x4", dims: [2, 1, 4], color: "#6970eb" },
+          ]
+          : [
+            { label: "Brick 1x2", dims: [1, 1, 2], color: "#BF5426" },
+            { label: "Brick 1x2", dims: [1, 1, 2], color: "#D2892D" },
+            { label: "Plate 1x6", dims: [1, 0.4, 6], color: "#E8B987" },
+          ]) as { label: string; dims: [number, number, number]; color: string }[];
+
+        const studentBricks = selectedStudent.bricks as BrickData[];
+        const usedLayers = Array.from(new Set(studentBricks.map((b) => b.layer))).sort((a, z) => a - z);
+
+        return (
+          <div className="fixed inset-0 z-50 flex flex-col h-screen overflow-hidden bg-gray-200">
+            {/* Top Bar */}
+            <div className="h-14 bg-white shadow flex items-center justify-between px-6 z-10">
+              <button
+                onClick={() => setSelectedStudentSocketId(null)}
+                className="flex font-medium text-gray-700 hover:text-gray-900 transition items-center gap-2"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+                Back to Dashboard
+              </button>
+
+              <div className="font-medium text-gray-600">
+                {selectedStudent.name}'s Workspace ({activeSession.module})
+              </div>
+
+              <div className="flex items-center gap-4 text-sm font-semibold text-gray-500">
+                {studentBricks.length} {studentBricks.length === 1 ? 'brick' : 'bricks'} placed
+              </div>
+            </div>
+
+            <div className="flex flex-1 min-h-0 overflow-hidden">
+              {/* sidebar */}
+              <div className="w-64 p-4 bg-white border-r border-gray-200 flex flex-col overflow-hidden min-h-0">
+                <h3 className="text-sm font-semibold mb-4 text-neutral-900">AVAILABLE ELEMENTS</h3>
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  {tools.map((tool, idx) => (
+                    <div key={idx} className="p-3 rounded-lg text-center text-xs font-medium text-gray-500 bg-gray-100 flex items-center justify-center gap-2 border border-gray-200 cursor-default opacity-80">
+                      <div className="w-3 h-3 rounded-full border border-black/20" style={{ backgroundColor: tool.color }} />
+                      {tool.label}
+                    </div>
+                  ))}
+                </div>
+
+                <hr className="mb-4" />
+
+                <h3 className="text-sm font-semibold mb-2 text-neutral-900">STUDENT'S LAYERS</h3>
+                <div className="flex-1 min-h-0 space-y-3 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+                  {usedLayers.length === 0 && (
+                    <p className="text-xs text-gray-400">No bricks placed yet.</p>
+                  )}
+                  {usedLayers.map((layerNum) => {
+                    const layerBricks = studentBricks.filter((b) => b.layer === layerNum);
+                    return (
+                      <div key={layerNum}>
+                        <p className="text-xs font-semibold text-gray-500 mb-1">Layer {layerNum}</p>
+                        <div className="space-y-1">
+                          {layerBricks.map((brick) => (
+                            <div key={brick.id} className="flex items-center px-3 py-1.5 rounded text-xs bg-gray-50 text-gray-700 border border-gray-100">
+                              <span>{brick.dimensions[0]}×{brick.dimensions[2]} brick</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* cad canvas */}
+              <div className="flex-1 relative bg-[#F1F2F4]">
+                <StudentPreviewCanvas student={selectedStudent} module={activeSession.module} isThumbnail={false} />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
