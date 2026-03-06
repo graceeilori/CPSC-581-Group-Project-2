@@ -1,16 +1,19 @@
 "use client";
 
-//Wall Specific Module - IN CLASSROOM
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, Stage} from "@react-three/drei";
+import { OrbitControls, Stage } from "@react-three/drei";
 import * as THREE from "three";
-import {OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Baseplate } from "@/components/Baseplate";
 import { Brick } from "@/components/Brick";
 import { type BrickData } from "@/components/Workspace";
 import wallData from "@/modules/wall.json";
+import pyramidData from "@/modules/pyramid.json";
 import { ObjectiveModel } from "@/components/ObjectiveModel";
+import { socket } from "@/lib/socket";
+import Link from "next/link";
 
 
 function CameraResetter({ onReady }: { onReady: (reset: () => void) => void }) {
@@ -23,7 +26,10 @@ function CameraResetter({ onReady }: { onReady: (reset: () => void) => void }) {
     return null;
 }
 
-export default function CadSession() {
+function CadSessionInner() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const sessionName = searchParams.get("sessionName") || "Introduction to CAD";
     const [selectedTool, setSelectedTool] = useState("Brick 2x4");
     const [showSettings, setShowSettings] = useState(false);
     const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
@@ -32,12 +38,37 @@ export default function CadSession() {
 
     const BASEPLATE_SIZE = 10;
 
-    // brick types for "The Wall"
-    const tools: { label: string; dims: [number, number, number]; color: string }[] = [
-        { label: "Brick 1x2", dims: [1, 1, 2], color: "#BF5426" },
-        { label: "Brick 1x2", dims: [1, 1, 2], color: "#D2892D" },
-        { label: "Plate 1x6", dims: [1, 0.4, 6], color: "#E8B987" },
-    ];
+    const [sessionModule, setSessionModule] = useState("The Wall");
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const saved = sessionStorage.getItem("activeSession");
+            if (saved) {
+                try {
+                    const sessionData = JSON.parse(saved);
+                    if (sessionData.module) setSessionModule(sessionData.module);
+                } catch (e) {
+                    // ignore
+                }
+            }
+        }
+    }, []);
+
+    const isPyramid = sessionModule === "The Pyramid";
+
+    const tools = (isPyramid
+        ? [
+            { label: "Brick 1x2", dims: [1, 1, 2], color: "#BF5426" },
+            { label: "Brick 2x2", dims: [2, 1, 2], color: "#d45050" },
+            { label: "Brick 2x4", dims: [2, 1, 4], color: "#6970eb" },
+        ]
+        : [
+            { label: "Brick 1x2", dims: [1, 1, 2], color: "#BF5426" },
+            { label: "Brick 1x2", dims: [1, 1, 2], color: "#D2892D" },
+            { label: "Plate 1x6", dims: [1, 0.4, 6], color: "#E8B987" },
+        ]) as { label: string; dims: [number, number, number]; color: string }[];
+
+    const targetData = isPyramid ? pyramidData.targetData : wallData.targetData;
 
     const [selectedIndex, setSelectedIndex] = useState(0);
     const currentTool = tools[selectedIndex].dims;
@@ -47,6 +78,17 @@ export default function CadSession() {
     const pressOrigin = useRef<{ x: number; y: number } | null>(null);
     const LONG_PRESS_MS = 500;
     const DRAG_THRESHOLD_PX = 8;
+
+    const handleSessionEnded = useCallback(() => {
+        sessionStorage.removeItem("activeSession");
+        alert("The expert ended the session.");
+        router.push("/student");
+    }, [router]);
+
+    useEffect(() => {
+        socket.on("session:ended", handleSessionEnded);
+        return () => { socket.off("session:ended", handleSessionEnded); };
+    }, [handleSessionEnded]);
 
     const handleCameraReady = useCallback((fn: () => void) => {
         resetCameraRef.current = fn;
@@ -89,7 +131,7 @@ export default function CadSession() {
     }
 
     function deleteBrick(id: string) {
-    setBricks((prev) => prev.filter((b) => b.id !== id));
+        setBricks((prev) => prev.filter((b) => b.id !== id));
     }
 
     // returns true if the new brick's 3D footprint overlaps any existing brick.
@@ -139,6 +181,12 @@ export default function CadSession() {
         ]);
     }
 
+    function handleLeave() {
+        socket.emit("session:leave");
+        sessionStorage.removeItem("activeSession");
+        router.push("/student");
+    }
+
     // Derive unique layer numbers from placed bricks
     const usedLayers = Array.from(new Set(bricks.map((b) => b.layer))).sort((a, z) => a - z);
 
@@ -148,12 +196,16 @@ export default function CadSession() {
             {/* top */}
             <div className="h-14 bg-white shadow flex items-center justify-between px-6">
 
-                {/* student name*/}
-                <div className="font-semibold text-black">Student Name</div>
+                <Link
+                    href="/student"
+                    className="flex font-medium text-gray-700 hover:text-gray-900 transition w-100 items-center gap-2"
+                >
+                    Back to Dashboard
+                </Link>
 
-                {/* module name */}
+                {/* session name */}
                 <div className="font-medium text-gray-600">
-                    Introduction to CAD 
+                    {sessionName}
                 </div>
 
                 {/* right buttons */}
@@ -166,8 +218,12 @@ export default function CadSession() {
                         Phone Linked
                     </span>
 
-                    <button className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600">
-                        Leave Class
+                    <button
+                        onClick={handleLeave}
+                        className="rounded-lg flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition"
+                    >
+                        <img src="/assets/exit.svg" alt="Exit" className="w-4 h-4 flex-shrink-0" />
+                        Leave session
                     </button>
 
                     {/* dropdown menu */}
@@ -289,7 +345,7 @@ export default function CadSession() {
                             onPlaceBrick={handlePlaceBrick}
                         />
 
-                        <ObjectiveModel targetBricks={wallData.targetData as BrickData[]} />
+                        <ObjectiveModel targetBricks={targetData as BrickData[]} />
 
                         {bricks.map((brick) => (
                             <Brick
@@ -333,5 +389,13 @@ export default function CadSession() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function CadSession() {
+    return (
+        <Suspense>
+            <CadSessionInner />
+        </Suspense>
     );
 }
