@@ -11,7 +11,7 @@ CPSC-581-Group-Project-2/
 ## Prerequisites
 
 Make sure you have these installed:
-- Node.js (v18 or higher)
+- Node.js
 - npm
 
 ---
@@ -20,7 +20,7 @@ Make sure you have these installed:
 
 ### 1. Clone the repo
 ```bash
-git clone <repo-url>
+git clone https://github.com/ChristianN517/CPSC-581-Group-Project-2.git
 cd CPSC-581-Group-Project-2
 ```
 
@@ -42,14 +42,14 @@ npm install
 
 You need **two terminals open at the same time.**
 
-### Terminal 1 — Socket Server
+### Terminal 1: Socket Server
 ```bash
 cd server
 node index.js
 ```
 Server runs on `http://localhost:3001`
 
-### Terminal 2 — Next.js Frontend
+### Terminal 2: Next.js Frontend
 ```bash
 cd my-app
 npm run dev
