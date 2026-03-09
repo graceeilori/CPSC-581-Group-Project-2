@@ -12,6 +12,7 @@ import { type BrickData } from "@/components/Workspace";
 import pyramidData from "@/modules/pyramid.json"
 import { ObjectiveModel } from "@/components/ObjectiveModel";
 
+
 function CameraResetter({ onReady }: { onReady: (reset: () => void) => void }) {
   const { controls } = useThree();
   useEffect(() => {
@@ -333,6 +334,7 @@ export default function CadSession() {
           )}
         </div>
       </div>
+      
     </div>
   );
 }

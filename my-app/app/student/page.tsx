@@ -9,6 +9,7 @@ interface ActiveSession {
   code: string;
   className: string;
   module: string;
+  expertSocketId?: string;
 }
 
 function StudentDashboardInner() {
@@ -88,7 +89,8 @@ function StudentDashboardInner() {
         setActiveSession({
           code: joinCode.trim(),
           className: res.className ?? "",
-          module: res.module ?? "The Wall"
+          module: res.module ?? "The Wall",
+          expertSocketId: (res as any).expertSocketId,
         });
         setShowModal(false);
         setJoinCode("");

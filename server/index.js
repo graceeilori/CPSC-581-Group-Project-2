@@ -62,8 +62,25 @@ io.on("connection", (socket) => {
             name: studentName,
         });
 
-        callback({ success: true, className: session.className, module: session.module });
+        // include expertSocketId so student can signal directly to the expert
+        callback({ success: true, className: session.className, module: session.module, expertSocketId: session.expertSocketId });
         console.log(`${studentName} joined session ${code}`);
+    });
+
+    // Simple WebRTC signaling forwarding
+    socket.on("webrtc:offer", ({ to, sdp }) => {
+        if (!to) return;
+        io.to(to).emit("webrtc:offer", { from: socket.id, sdp });
+    });
+
+    socket.on("webrtc:answer", ({ to, sdp }) => {
+        if (!to) return;
+        io.to(to).emit("webrtc:answer", { from: socket.id, sdp });
+    });
+
+    socket.on("webrtc:ice-candidate", ({ to, candidate }) => {
+        if (!to) return;
+        io.to(to).emit("webrtc:ice-candidate", { from: socket.id, candidate });
     });
 
     // Student updates their board
@@ -96,6 +113,22 @@ io.on("connection", (socket) => {
     // Student leaves voluntarily
     socket.on("session:leave", () => {
         handleStudentLeave(socket);
+    });
+
+    // Student requests help
+    socket.on("student:help", () => {
+        const code = socket.data.code;
+        const session = sessions[code];
+        if (!session) return;
+        const student = session.students[socket.id];
+        if (!student) return;
+
+        // Forward the help event to the expert who created the session
+        io.to(session.expertSocketId).emit("student:help", {
+            socketId: socket.id,
+            name: student.name,
+        });
+        console.log(`${student.name} requested help in session ${code}`);
     });
 
     // Handle disconnect (tab closed etc)

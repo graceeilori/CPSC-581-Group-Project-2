@@ -14,6 +14,7 @@ import pyramidData from "@/modules/pyramid.json";
 import { ObjectiveModel } from "@/components/ObjectiveModel";
 import { socket } from "@/lib/socket";
 import Link from "next/link";
+import HelpKeywordListener from '@/components/HelpKeywordListener';
 
 
 function CameraResetter({ onReady }: { onReady: (reset: () => void) => void }) {
@@ -36,9 +37,17 @@ function CadSessionInner() {
     const [bricks, setBricks] = useState<BrickData[]>([]);
     const resetCameraRef = useRef<(() => void) | null>(null);
 
+    // WebRTC voice chat state
+    const pcRef = useRef<RTCPeerConnection | null>(null);
+    const localStreamRef = useRef<MediaStream | null>(null);
+    const [isTalking, setIsTalking] = useState(false);
+    const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+
     const BASEPLATE_SIZE = 10;
 
     const [sessionModule, setSessionModule] = useState("The Wall");
+
+    const [activeSession, setActiveSession] = useState<{ code: string; className: string; module: string; expertSocketId?: string } | null>(null);
 
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -47,6 +56,8 @@ function CadSessionInner() {
                 try {
                     const sessionData = JSON.parse(saved);
                     if (sessionData.module) setSessionModule(sessionData.module);
+                    // load activeSession to access expertSocketId for WebRTC
+                    setActiveSession(sessionData);
                 } catch (e) {
                     // ignore
                 }
@@ -93,6 +104,160 @@ function CadSessionInner() {
     const handleCameraReady = useCallback((fn: () => void) => {
         resetCameraRef.current = fn;
     }, []);
+
+    useEffect(() => {
+        // signaling handlers
+        function onOffer({ from, sdp }: any) {
+            // incoming offer from expert -> act as answerer (student)
+            (async () => {
+                try {
+                    if (!localStreamRef.current) {
+                        localStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    }
+                    const pc = new RTCPeerConnection();
+                    pcRef.current = pc;
+
+                    pc.onicecandidate = (e) => {
+                        if (e.candidate) {
+                            socket.emit('webrtc:ice-candidate', { to: from, candidate: e.candidate });
+                        }
+                    };
+
+                    pc.ontrack = (ev) => {
+                        if (!remoteAudioRef.current) {
+                            const a = document.createElement('audio');
+                            a.autoplay = true;
+                            remoteAudioRef.current = a;
+                            document.body.appendChild(a);
+                        }
+                        try {
+                            remoteAudioRef.current.srcObject = ev.streams[0];
+                        } catch (e) {
+                            console.error(e);
+                        }
+                    };
+
+                    localStreamRef.current.getTracks().forEach((t) => pc.addTrack(t, localStreamRef.current!));
+
+                    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
+                    socket.emit('webrtc:answer', { to: from, sdp: pc.localDescription });
+                    setIsTalking(true);
+                } catch (err) {
+                    console.error('Failed to handle offer', err);
+                }
+            })();
+        }
+
+        function onAnswer({ from, sdp }: any) {
+            (async () => {
+                try {
+                    if (!pcRef.current) return;
+                    // Only apply an answer if we are the offerer and currently have a local offer
+                    const pc = pcRef.current;
+                    // Normalize signalingState to remove stray CR characters and compare reliably
+                    const state = String(pc.signalingState).replace(/\r/g, '');
+                    if (sdp && sdp.type === 'answer') {
+                        if (state === 'have-local-offer') {
+                            await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+                        } else {
+                            console.warn('Ignoring answer — RTCPeerConnection in unexpected state:', state);
+                        }
+                    } else {
+                        // For non-answer SDPs, attempt to set the remote description defensively
+                        try {
+                            await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+                        } catch (err) {
+                            console.error('Failed to set remote desc from answer', err);
+                        }
+                    }
+                } catch (err) {
+                    console.error('Failed to set remote desc from answer', err);
+                }
+            })();
+        }
+
+        function onIce({ from, candidate }: any) {
+            try {
+                if (pcRef.current && candidate) {
+                    pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+                }
+            } catch (err) {
+                console.error('Failed to add ICE candidate', err);
+            }
+        }
+
+        socket.on('webrtc:offer', onOffer);
+        socket.on('webrtc:answer', onAnswer);
+        socket.on('webrtc:ice-candidate', onIce);
+
+        return () => {
+            socket.off('webrtc:offer', onOffer);
+            socket.off('webrtc:answer', onAnswer);
+            socket.off('webrtc:ice-candidate', onIce);
+        };
+    }, []);
+
+    async function startVoice() {
+        if (!activeSession || !activeSession.expertSocketId) {
+            alert('No expert available to talk to.');
+            return;
+        }
+        const target = activeSession.expertSocketId;
+        try {
+            localStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const pc = new RTCPeerConnection();
+            pcRef.current = pc;
+
+            pc.onicecandidate = (e) => {
+                if (e.candidate) {
+                    socket.emit('webrtc:ice-candidate', { to: target, candidate: e.candidate });
+                }
+            };
+
+            pc.ontrack = (ev) => {
+                if (!remoteAudioRef.current) {
+                    const a = document.createElement('audio');
+                    a.autoplay = true;
+                    remoteAudioRef.current = a;
+                    document.body.appendChild(a);
+                }
+                remoteAudioRef.current.srcObject = ev.streams[0];
+            };
+
+            localStreamRef.current.getTracks().forEach((t) => pc.addTrack(t, localStreamRef.current!));
+
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            socket.emit('webrtc:offer', { to: target, sdp: pc.localDescription });
+            setIsTalking(true);
+        } catch (err) {
+            console.error('Failed to start voice', err);
+            stopVoice();
+        }
+    }
+
+    function stopVoice() {
+        setIsTalking(false);
+        try {
+            if (pcRef.current) {
+                pcRef.current.getSenders().forEach((s) => { try { s.track?.stop(); } catch {} });
+                pcRef.current.close();
+                pcRef.current = null;
+            }
+            if (localStreamRef.current) {
+                localStreamRef.current.getTracks().forEach((t) => t.stop());
+                localStreamRef.current = null;
+            }
+            if (remoteAudioRef.current) {
+                try { remoteAudioRef.current.remove(); } catch {};
+                remoteAudioRef.current = null;
+            }
+        } catch (err) {
+            console.error('Failed to stop voice', err);
+        }
+    }
 
     function closeCtxMenu() {
         setCtxMenu(null);
@@ -214,9 +379,13 @@ function CadSessionInner() {
                 </div>
 
                 {/* right buttons */}
-                <div className="flex items-center gap-4">
-                    <button className="px-3 py-1 border rounded hover:bg-gray-100 text-black">
-                        Talk
+                    <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => { isTalking ? stopVoice() : startVoice(); }}
+                        className={`px-3 py-1 rounded ${isTalking ? 'bg-green-600 text-white' : 'border hover:bg-gray-100 text-black'}`}
+                        title={isTalking ? 'Stop talking' : 'Talk'}
+                    >
+                        {isTalking ? 'Talking…' : 'Talk'}
                     </button>
 
                     <span className="text-green-600 text-sm font-semibold">
@@ -392,6 +561,10 @@ function CadSessionInner() {
                         </div>
                     )}
                 </div>
+            </div>
+            {/* speech listener and live word tracking panel */}
+            <div className="absolute bottom-4 right-4 z-50">
+                <HelpKeywordListener disabled={isTalking} />
             </div>
         </div>
     );

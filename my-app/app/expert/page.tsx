@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { socket } from "@/lib/socket";
@@ -86,6 +86,12 @@ function ExpertDashboardInner() {
   const [isCreating, setIsCreating] = useState(false);
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [selectedStudentSocketId, setSelectedStudentSocketId] = useState<string | null>(null);
+  // WebRTC voice chat state for expert
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [isTalking, setIsTalking] = useState(false);
+  const [helpAlert, setHelpAlert] = useState<{ socketId: string; name: string } | null>(null);
 
   const activities = [
     { name: "The Wall" },
@@ -139,16 +145,158 @@ function ExpertDashboardInner() {
     []
   );
 
+  const handleStudentHelp = useCallback(({ socketId, name }: { socketId: string; name: string }) => {
+    setActiveSession((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        students: prev.students.map((s) => s.socketId === socketId ? { ...s, needsHelp: true } : s),
+      };
+    });
+    setHelpAlert({ socketId, name });
+  }, []);
+
   useEffect(() => {
     socket.on("student:joined", handleStudentJoined);
     socket.on("student:left", handleStudentLeft);
     socket.on("board:update", handleBoardUpdate);
+    socket.on("student:help", handleStudentHelp);
+    // WebRTC signaling handlers
+    const onOffer = async ({ from, sdp }: any) => {
+      try {
+        if (!localStreamRef.current) {
+          localStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
+        const pc = new RTCPeerConnection();
+        pcRef.current = pc;
+
+        pc.onicecandidate = (e) => {
+          if (e.candidate) socket.emit('webrtc:ice-candidate', { to: from, candidate: e.candidate });
+        };
+
+        pc.ontrack = (ev) => {
+          if (!remoteAudioRef.current) {
+            const a = document.createElement('audio');
+            a.autoplay = true;
+            remoteAudioRef.current = a;
+            document.body.appendChild(a);
+          }
+          remoteAudioRef.current.srcObject = ev.streams[0];
+        };
+
+        localStreamRef.current.getTracks().forEach((t) => pc.addTrack(t, localStreamRef.current!));
+        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit('webrtc:answer', { to: from, sdp: pc.localDescription });
+        setIsTalking(true);
+      } catch (err) {
+        console.error('Expert failed to handle offer', err);
+      }
+    };
+
+    const onAnswer = async ({ from, sdp }: any) => {
+      try {
+        if (!pcRef.current) return;
+        const pc = pcRef.current;
+        // Normalize signalingState to remove stray CR characters and compare reliably
+        const state = String(pc.signalingState).replace(/\r/g, '');
+        if (sdp && sdp.type === 'answer') {
+          if (state === 'have-local-offer') {
+            await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+          } else {
+            console.warn('Ignoring answer — RTCPeerConnection in unexpected state:', state);
+          }
+        } else {
+          try {
+            await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+          } catch (err) {
+            console.error('Expert failed to handle answer', err);
+          }
+        }
+      } catch (err) {
+        console.error('Expert failed to handle answer', err);
+      }
+    };
+
+    const onIce = ({ from, candidate }: any) => {
+      try {
+        if (pcRef.current && candidate) pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (err) {
+        console.error('Expert failed to add ICE', err);
+      }
+    };
+
+    socket.on('webrtc:offer', onOffer);
+    socket.on('webrtc:answer', onAnswer);
+    socket.on('webrtc:ice-candidate', onIce);
     return () => {
       socket.off("student:joined", handleStudentJoined);
       socket.off("student:left", handleStudentLeft);
       socket.off("board:update", handleBoardUpdate);
+      socket.off("student:help", handleStudentHelp);
+      socket.off('webrtc:offer', onOffer);
+      socket.off('webrtc:answer', onAnswer);
+      socket.off('webrtc:ice-candidate', onIce);
     };
-  }, [handleStudentJoined, handleStudentLeft, handleBoardUpdate]);
+  }, [handleStudentJoined, handleStudentLeft, handleBoardUpdate, handleStudentHelp]);
+
+  async function startVoice() {
+    if (!selectedStudentSocketId) {
+      alert('Select a student to talk to first.');
+      return;
+    }
+    const target = selectedStudentSocketId;
+    try {
+      localStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const pc = new RTCPeerConnection();
+      pcRef.current = pc;
+
+      pc.onicecandidate = (e) => {
+        if (e.candidate) socket.emit('webrtc:ice-candidate', { to: target, candidate: e.candidate });
+      };
+
+      pc.ontrack = (ev) => {
+        if (!remoteAudioRef.current) {
+          const a = document.createElement('audio');
+          a.autoplay = true;
+          remoteAudioRef.current = a;
+          document.body.appendChild(a);
+        }
+        remoteAudioRef.current.srcObject = ev.streams[0];
+      };
+
+      localStreamRef.current.getTracks().forEach((t) => pc.addTrack(t, localStreamRef.current!));
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.emit('webrtc:offer', { to: target, sdp: pc.localDescription });
+      setIsTalking(true);
+    } catch (err) {
+      console.error('Expert failed to start voice', err);
+      stopVoice();
+    }
+  }
+
+  function stopVoice() {
+    setIsTalking(false);
+    try {
+      if (pcRef.current) {
+        pcRef.current.getSenders().forEach((s) => { try { s.track?.stop(); } catch {} });
+        pcRef.current.close();
+        pcRef.current = null;
+      }
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((t) => t.stop());
+        localStreamRef.current = null;
+      }
+      if (remoteAudioRef.current) {
+        try { remoteAudioRef.current.remove(); } catch {};
+        remoteAudioRef.current = null;
+      }
+    } catch (err) {
+      console.error('Expert failed to stop voice', err);
+    }
+  }
 
   // Handlers
   function handleOpenClassroom() {
@@ -472,6 +620,42 @@ function ExpertDashboardInner() {
         </div>
       )}
 
+      {helpAlert && (
+        <div className="fixed top-6 right-6 z-60">
+          <div className="bg-white border border-gray-200 shadow-lg rounded-lg p-4 w-80">
+            <div className="font-semibold text-gray-900">Student {helpAlert.name} needs Help</div>
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                onClick={() => setHelpAlert(null)}
+                className="px-3 py-1 text-sm text-gray-700 rounded hover:bg-gray-100"
+              >
+                Dismiss
+              </button>
+              <button
+                onClick={() => {
+                  // navigate to classroom and open selected student's full view
+                  setActiveTab("classroom");
+                  setSelectedStudentSocketId(helpAlert.socketId);
+                  // clear the alert
+                  setHelpAlert(null);
+                  // clear the needsHelp flag on the student in activeSession
+                  setActiveSession((prev) => {
+                    if (!prev) return prev;
+                    return {
+                      ...prev,
+                      students: prev.students.map((s) => s.socketId === helpAlert.socketId ? { ...s, needsHelp: false } : s),
+                    };
+                  });
+                }}
+                className="px-3 py-1 bg-primary-100 text-white rounded text-sm"
+              >
+                Go Help
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Full-Screen Student View (Mimicking a new page) */}
       {selectedStudentSocketId && activeSession && (() => {
         const selectedStudent = activeSession.students.find(s => s.socketId === selectedStudentSocketId);
@@ -512,7 +696,15 @@ function ExpertDashboardInner() {
               </div>
 
               <div className="flex items-center gap-4 text-sm font-semibold text-gray-500">
-                {studentBricks.length} {studentBricks.length === 1 ? 'brick' : 'bricks'} placed
+                <div className="flex items-center gap-4">
+                  <div>{studentBricks.length} {studentBricks.length === 1 ? 'brick' : 'bricks'} placed</div>
+                  <button
+                    onClick={() => { isTalking ? stopVoice() : startVoice(); }}
+                    className={`px-3 py-1 rounded ${isTalking ? 'bg-green-600 text-white' : 'border hover:bg-gray-100 text-black'}`}
+                  >
+                    {isTalking ? 'Talking…' : 'Talk'}
+                  </button>
+                </div>
               </div>
             </div>
 
