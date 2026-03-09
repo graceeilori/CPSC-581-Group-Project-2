@@ -7,8 +7,12 @@ const app = express();
 app.use(cors());
 
 const httpServer = http.createServer(app);
+
 const io = new Server(httpServer, {
-    cors: { origin: "*" }
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
 });
 
 // In-memory store
