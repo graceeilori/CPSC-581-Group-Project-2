@@ -11,6 +11,7 @@ import { Brick } from "@/components/Brick";
 import { type BrickData } from "@/components/Workspace";
 import pyramidData from "@/modules/pyramid.json"
 import { ObjectiveModel } from "@/components/ObjectiveModel";
+import HelpKeywordListener from '@/components/HelpKeywordListener';
 
 function CameraResetter({ onReady }: { onReady: (reset: () => void) => void }) {
   const { controls } = useThree();
@@ -329,6 +330,10 @@ export default function CadSession() {
             </div>
           )}
         </div>
+      </div>
+      {/* speech listener thing again */}
+      <div className="absolute bottom-4 right-4 z-50">
+        <HelpKeywordListener />
       </div>
     </div>
   );

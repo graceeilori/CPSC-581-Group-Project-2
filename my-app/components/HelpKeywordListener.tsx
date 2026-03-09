@@ -14,6 +14,7 @@ export default function HelpKeywordListener() {
   const [status, setStatus] = useState("Starting...");
   const recognitionRef = useRef<any>(null);
   const shouldKeepListeningRef = useRef(true);
+  const lastSentRef = useRef<number | null>(null);
 
   useEffect(() => {
     const SpeechRecognition =
@@ -46,7 +47,31 @@ export default function HelpKeywordListener() {
       setLiveTranscript(cleanedTranscript);
 
       if (/\bhelp\b/i.test(cleanedTranscript)) {
-        alert("Help keyword detected.");
+        const now = Date.now();
+        const cooldown = 30_000; // 30 second delay before next help notification can be sent
+
+        // Only send notification at most once per cooldown. Show popup only when a send occurs.
+        if (!lastSentRef.current || now - lastSentRef.current >= cooldown) {
+          lastSentRef.current = now;
+
+          (async () => {
+            try {
+              const res = await fetch('/api/send-notification', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: 'Student has asked for help' }),
+              });
+
+              if (res.ok) {
+                alert('Notification\n\nYou have requested help. Your professor has been notified.');
+              } else {
+                console.error('Notification endpoint returned error:', res.statusText || res.status);
+              }
+            } catch (error) {
+              console.error('Failed to send notification:', error);
+            }
+          })();
+        }
       }
     };
 
@@ -89,9 +114,6 @@ export default function HelpKeywordListener() {
 
   return (
     <div className="mt-6 w-full max-w-2xl rounded-lg bg-white/10 p-4 text-white">
-      <h2 className="text-xl font-semibold mb-2">Speech Test</h2>
-      <p className="mb-2">Status: {status}</p>
-      <p className="mb-2 font-medium">Live Transcript:</p>
       <div className="min-h-[80px] rounded bg-black/30 p-3 text-left">
         {liveTranscript || "Waiting for speech..."}
       </div>
