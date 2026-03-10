@@ -7,12 +7,8 @@ const app = express();
 app.use(cors());
 
 const httpServer = http.createServer(app);
-
 const io = new Server(httpServer, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
+    cors: { origin: "*" }
 });
 
 // In-memory store
@@ -133,6 +129,53 @@ io.on("connection", (socket) => {
             name: student.name,
         });
         console.log(`${student.name} requested help in session ${code}`);
+    });
+
+    // Phone registers as a haptic proxy for a student
+    socket.on("proxy:register", ({ code, studentSocketId }, callback) => {
+        console.log("proxy:register received", { code, studentSocketId, proxySid: socket.id });
+        socket.join(code);
+        socket.data.role = "proxy";
+        socket.data.code = code;
+        socket.data.studentSocketId = studentSocketId;
+        callback({ success: true });
+    });
+
+    // proxy:linked logic
+    socket.on("proxy:linked", () => {
+        const studentSocketId = socket.data.studentSocketId;
+        if (studentSocketId) {
+            io.to(studentSocketId).emit("proxy:linked");
+        }
+    });
+
+    // Student desktop triggers haptic — forward to proxy
+    socket.on("haptic:trigger", ({ studentSocketId, pattern }) => {
+        const code = socket.data.code;
+        console.log("haptic:trigger received", { code, studentSocketId, pattern });
+
+        const roomSockets = io.sockets.adapter.rooms.get(code);
+        console.log("room sockets:", roomSockets ? [...roomSockets] : "NO ROOM FOUND");
+
+        if (roomSockets) {
+            for (const sid of roomSockets) {
+                const s = io.sockets.sockets.get(sid);
+                console.log("checking socket:", sid, "role:", s?.data.role, "linkedTo:", s?.data.studentSocketId);
+                if (s && s.data.role === "proxy" && s.data.studentSocketId === studentSocketId) {
+                    console.log("FOUND PROXY — firing haptic:fire to", sid);
+                    io.to(sid).emit("haptic:fire", { pattern });
+                }
+            }
+        }
+    });
+
+    // forward layer:completed to expert
+    socket.on("layer:completed", ({ layer, studentId }) => {
+        const code = socket.data.code;
+        const session = sessions[code];
+        if (!session) return;
+
+        io.to(session.expertSocketId).emit("layer:completed", { layer, studentId });
     });
 
     // Handle disconnect (tab closed etc)
